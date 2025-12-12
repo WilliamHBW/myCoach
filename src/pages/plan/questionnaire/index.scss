@@ -1,0 +1,115 @@
+.questionnaire-page {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 40px 0;
+
+  .progress-bar {
+    height: 4px;
+    background-color: #e0e0e0;
+    width: 100%;
+    
+    .progress-fill {
+      height: 100%;
+      background-color: #07c160;
+      transition: width 0.3s ease;
+    }
+  }
+
+  .question-container {
+    flex: 1;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+
+    .step-indicator {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .question-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 30px;
+      line-height: 1.4;
+    }
+
+    .options-list {
+      .option-item {
+        background-color: #fff;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        &.selected {
+          border-color: #07c160;
+          background-color: rgba(7, 193, 96, 0.05);
+          color: #07c160;
+          font-weight: 500;
+        }
+
+        &:active {
+          opacity: 0.8;
+        }
+
+        .check-mark {
+          font-weight: bold;
+        }
+      }
+    }
+
+    .input-container {
+      .text-input {
+        width: 100%;
+        height: 150px;
+        background-color: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        box-sizing: border-box;
+        font-size: 16px;
+        border: 1px solid #ddd;
+      }
+    }
+  }
+
+  .actions {
+    padding: 20px;
+    display: flex;
+    gap: 15px;
+    background-color: #f8f9fa;
+
+    .btn {
+      flex: 1;
+      height: 50px;
+      line-height: 50px;
+      border-radius: 25px;
+      font-size: 16px;
+      border: none;
+      
+      &.primary {
+        background-color: #07c160;
+        color: #fff;
+      }
+
+      &.secondary {
+        background-color: #fff;
+        color: #666;
+        border: 1px solid #ddd;
+      }
+      
+      &:after {
+        border: none;
+      }
+    }
+  }
+}
+
