@@ -1,79 +1,121 @@
-import { View, Text, Input, Button, Picker, Textarea } from '@tarojs/components'
-import Taro from '@tarojs/taro'
 import { useSettingsStore, ModelProvider } from '../../store/useSettingsStore'
+import { showToast } from '../../utils/ui'
 import './index.scss'
 
-const PROVIDERS: { value: ModelProvider; label: string }[] = [
-  { value: 'openai', label: 'OpenAI (GPT-4/3.5)' },
-  { value: 'deepseek', label: 'DeepSeek (深度求索)' },
-  { value: 'claude', label: 'Anthropic (Claude)' },
+const PROVIDERS: { value: ModelProvider; label: string; hint?: string }[] = [
+  { value: 'openai', label: 'OpenAI (GPT-4/3.5)', hint: 'api.openai.com' },
+  { value: 'deepseek', label: 'DeepSeek (深度求索)', hint: 'api.deepseek.com' },
+  { value: 'claude', label: 'Anthropic (Claude)', hint: 'api.anthropic.com' },
+  { value: 'custom', label: '自定义 API', hint: '填写您自己的 API 地址' },
 ]
 
 export default function Settings() {
   const { 
     apiKey, 
-    modelProvider, 
+    modelProvider,
+    customBaseUrl,
+    customModel,
     systemPrompt, 
     setApiKey, 
-    setModelProvider, 
+    setModelProvider,
+    setCustomBaseUrl,
+    setCustomModel,
     setSystemPrompt 
   } = useSettingsStore()
 
   const handleSave = () => {
-    // Zustand persist middleware already saves changes, 
-    // but we can add a visual feedback here.
-    Taro.showToast({
-      title: '设置已保存',
-      icon: 'success',
-      duration: 2000
-    })
+    if (modelProvider === 'custom' && !customBaseUrl) {
+      showToast('请填写自定义 API 地址', 'error')
+      return
+    }
+    
+    showToast('设置已保存', 'success')
   }
 
-  const currentProviderIndex = PROVIDERS.findIndex(p => p.value === modelProvider)
+  const isCustomProvider = modelProvider === 'custom'
+  const currentProvider = PROVIDERS.find(p => p.value === modelProvider)
 
   return (
-    <View className='settings-page'>
-      <View className='section'>
-        <Text className='section-title'>模型选择</Text>
-        <Picker 
-          mode='selector' 
-          range={PROVIDERS} 
-          rangeKey='label'
-          value={currentProviderIndex}
-          onChange={(e) => setModelProvider(PROVIDERS[e.detail.value].value)}
+    <div className='settings-page'>
+      <div className='section'>
+        <h3 className='section-title'>模型选择</h3>
+        <select
+          className='select-input'
+          value={modelProvider}
+          onChange={(e) => setModelProvider(e.target.value as ModelProvider)}
         >
-          <View className='picker-item'>
-            <Text>当前选择：</Text>
-            <Text className='picker-value'>{PROVIDERS[currentProviderIndex]?.label || '请选择'}</Text>
-          </View>
-        </Picker>
-      </View>
+          {PROVIDERS.map(provider => (
+            <option key={provider.value} value={provider.value}>
+              {provider.label}
+            </option>
+          ))}
+        </select>
+        {currentProvider?.hint && (
+          <p className='hint'>{currentProvider.hint}</p>
+        )}
+      </div>
 
-      <View className='section'>
-        <Text className='section-title'>API Key</Text>
-        <Input
+      {isCustomProvider && (
+        <div className='section custom-api-section'>
+          <h3 className='section-title'>自定义 API 地址</h3>
+          <input
+            className='input'
+            type='text'
+            placeholder='例如: https://your-proxy.com/v1'
+            value={customBaseUrl}
+            onChange={(e) => setCustomBaseUrl(e.target.value)}
+          />
+          <p className='hint'>
+            填写 OpenAI 兼容的 API 地址（无需 /chat/completions 后缀）
+          </p>
+
+          <h3 className='section-title' style={{ marginTop: '20px' }}>模型名称</h3>
+          <input
+            className='input'
+            type='text'
+            placeholder='例如: gpt-3.5-turbo, deepseek-chat'
+            value={customModel}
+            onChange={(e) => setCustomModel(e.target.value)}
+          />
+          <p className='hint'>留空则使用 gpt-3.5-turbo</p>
+        </div>
+      )}
+
+      <div className='section'>
+        <h3 className='section-title'>API Key</h3>
+        <input
           className='input'
-          type='text'
-          password
+          type='password'
           placeholder='请输入您的 API Key'
           value={apiKey}
-          onInput={(e) => setApiKey(e.detail.value)}
+          onChange={(e) => setApiKey(e.target.value)}
         />
-        <Text className='hint'>您的 Key 仅存储在本地设备，不会上传到我们的服务器。</Text>
-      </View>
+        <p className='hint'>您的 Key 仅存储在本地浏览器，不会上传到任何服务器。</p>
+      </div>
 
-      <View className='section'>
-        <Text className='section-title'>系统提示词 (System Prompt)</Text>
-        <Textarea
+      <div className='section'>
+        <h3 className='section-title'>系统提示词 (System Prompt)</h3>
+        <textarea
           className='textarea'
           placeholder='设置 AI 教练的人设...'
           value={systemPrompt}
-          onInput={(e) => setSystemPrompt(e.detail.value)}
-          maxlength={500}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          maxLength={500}
         />
-      </View>
+      </div>
 
-      <Button className='save-btn' onClick={handleSave}>保存配置</Button>
-    </View>
+      <div className='info-card'>
+        <span className='info-icon'>💡</span>
+        <div className='info-content'>
+          <p className='info-title'>关于浏览器端调用 API</p>
+          <p className='info-text'>
+            直接从浏览器调用 AI API 可能会遇到跨域 (CORS) 问题。
+            建议使用支持 CORS 的代理服务，或部署自己的后端中转服务。
+          </p>
+        </div>
+      </div>
+
+      <button className='save-btn' onClick={handleSave}>保存配置</button>
+    </div>
   )
 }

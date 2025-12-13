@@ -1,75 +1,134 @@
 .settings-page {
+  min-height: calc(100vh - 56px);
   padding: 20px;
   background-color: #f7f8fa;
-  min-height: 100vh;
   box-sizing: border-box;
 
   .section {
     background-color: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 
     .section-title {
-      display: block;
-      font-size: 16px;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 600;
       color: #333;
-      margin-bottom: 10px;
+      margin: 0 0 12px 0;
     }
 
-    .picker-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      font-size: 14px;
-      color: #666;
+    .select-input {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      background: #fff;
+      appearance: none;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 12px center;
+      padding-right: 35px;
+      cursor: pointer;
 
-      .picker-value {
-        color: #333;
-        font-weight: 500;
+      &:focus {
+        outline: none;
+        border-color: #07c160;
       }
     }
 
     .input {
       width: 100%;
-      height: 40px;
+      height: 44px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 0 10px;
+      border-radius: 8px;
+      padding: 0 12px;
       box-sizing: border-box;
-      font-size: 14px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: #07c160;
+      }
     }
 
     .textarea {
       width: 100%;
-      height: 100px;
+      min-height: 100px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 12px;
       box-sizing: border-box;
-      font-size: 14px;
+      font-size: 15px;
+      resize: none;
+      font-family: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: #07c160;
+      }
     }
 
     .hint {
-      display: block;
       font-size: 12px;
       color: #999;
-      margin-top: 8px;
+      margin: 8px 0 0 0;
+      line-height: 1.5;
+    }
+  }
+
+  .custom-api-section {
+    border: 1px solid #e6f7ff;
+    background: linear-gradient(135deg, #f6fbff 0%, #fff 100%);
+  }
+
+  .info-card {
+    display: flex;
+    gap: 12px;
+    background: linear-gradient(135deg, #fffbe6 0%, #fff9e6 100%);
+    border: 1px solid #ffe58f;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+
+    .info-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .info-content {
+      .info-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #d48806;
+        margin: 0 0 6px 0;
+      }
+
+      .info-text {
+        font-size: 13px;
+        color: #874d00;
+        line-height: 1.6;
+        margin: 0;
+      }
     }
   }
 
   .save-btn {
-    background-color: #07c160;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
     color: #fff;
-    border-radius: 8px;
+    border: none;
+    border-radius: 25px;
     font-size: 16px;
-    margin-top: 30px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
     
-    &:active {
-      opacity: 0.8;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(7, 193, 96, 0.4);
     }
   }
 }

@@ -1,12 +1,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import Taro from '@tarojs/taro'
 
 export interface WorkoutRecord {
   id: string
   createdAt: number
   data: Record<string, any>
-  analysis?: string // Store AI analysis result here
+  analysis?: string
 }
 
 interface RecordState {
@@ -14,30 +13,6 @@ interface RecordState {
   addRecord: (data: Record<string, any>) => void
   deleteRecord: (id: string) => void
   updateRecordAnalysis: (id: string, analysis: string) => void
-}
-
-const taroStorage = {
-  getItem: (name: string) => {
-    try {
-      return Taro.getStorageSync(name) || null
-    } catch (e) {
-      return null
-    }
-  },
-  setItem: (name: string, value: string) => {
-    try {
-      Taro.setStorageSync(name, value)
-    } catch (e) {
-      console.error('Failed to save records', e)
-    }
-  },
-  removeItem: (name: string) => {
-    try {
-      Taro.removeStorageSync(name)
-    } catch (e) {
-      console.error('Failed to remove records', e)
-    }
-  },
 }
 
 export const useRecordStore = create<RecordState>()(
@@ -65,8 +40,7 @@ export const useRecordStore = create<RecordState>()(
     }),
     {
       name: 'my-coach-records',
-      storage: createJSONStorage(() => taroStorage),
+      storage: createJSONStorage(() => localStorage),
     }
   )
 )
-

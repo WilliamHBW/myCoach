@@ -1,34 +1,33 @@
-import { View, Text, Button, ScrollView } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useRecordStore, WorkoutRecord } from '../../store/useRecordStore'
-import { LLMClient } from '../../services/ai/client'
 import { useSettingsStore } from '../../store/useSettingsStore'
+import { LLMClient } from '../../services/ai/client'
+import { showToast, showLoading, hideLoading } from '../../utils/ui'
 import './index.scss'
 
 export default function RecordList() {
-  const { records, deleteRecord, updateRecordAnalysis } = useRecordStore()
-  const { apiKey, modelProvider } = useSettingsStore()
-  // Force re-render on show to update list
-  const [, setTick] = useState(0)
-  useDidShow(() => setTick(t => t + 1))
+  const navigate = useNavigate()
+  const { records, updateRecordAnalysis } = useRecordStore()
+  const { apiKey, modelProvider, customBaseUrl, customModel } = useSettingsStore()
 
   const handleAdd = () => {
-    Taro.navigateTo({ url: '/pages/record/form/index' })
+    navigate('/record/form')
   }
 
   const handleAnalyze = async (record: WorkoutRecord) => {
     if (!apiKey) {
-      Taro.showToast({ title: '请先配置 API Key', icon: 'none' })
+      showToast('请先配置 API Key', 'error')
       return
     }
 
-    Taro.showLoading({ title: 'AI 分析中...' })
+    showLoading('AI 分析中...')
     
     try {
       const client = new LLMClient({
         apiKey,
         modelProvider,
+        baseUrl: modelProvider === 'custom' ? customBaseUrl : undefined,
+        model: modelProvider === 'custom' && customModel ? customModel : undefined,
         temperature: 0.7
       })
 
@@ -47,71 +46,71 @@ RPE(1-10): ${record.data.rpe}
       ])
 
       updateRecordAnalysis(record.id, response.content)
-      Taro.hideLoading()
-      Taro.showToast({ title: '分析完成', icon: 'success' })
+      hideLoading()
+      showToast('分析完成', 'success')
 
     } catch (e) {
-      Taro.hideLoading()
-      Taro.showToast({ title: '分析失败，请重试', icon: 'none' })
+      hideLoading()
+      showToast('分析失败，请重试', 'error')
       console.error(e)
     }
   }
 
   return (
-    <View className='record-list-page'>
+    <div className='record-list-page'>
       {records.length === 0 ? (
-        <View className='empty-state'>
-          <Text className='desc'>还没有运动记录</Text>
-          <Button className='add-btn' onClick={handleAdd}>记一笔</Button>
-        </View>
+        <div className='empty-state'>
+          <div className='empty-icon'>📝</div>
+          <p className='desc'>还没有运动记录</p>
+          <p className='hint'>记录每次训练，让 AI 教练帮你分析</p>
+          <button className='add-btn' onClick={handleAdd}>记一笔</button>
+        </div>
       ) : (
-        <ScrollView className='list-container' scrollY>
-          <View className='action-header'>
-            <Button className='add-btn-small' onClick={handleAdd}>+ 记一笔</Button>
-          </View>
+        <div className='list-container'>
+          <div className='action-header'>
+            <button className='add-btn-small' onClick={handleAdd}>+ 记一笔</button>
+          </div>
 
           {records.map(record => (
-            <View key={record.id} className='record-card'>
-              <View className='card-header'>
-                <View className='left'>
-                  <Text className='type'>{record.data.type}</Text>
-                  <Text className='date'>{record.data.date}</Text>
-                </View>
-                <View className='right'>
-                  <Text className='duration'>{record.data.duration}分钟</Text>
-                </View>
-              </View>
+            <div key={record.id} className='record-card'>
+              <div className='card-header'>
+                <div className='left'>
+                  <span className='type'>{record.data.type}</span>
+                  <span className='date'>{record.data.date}</span>
+                </div>
+                <div className='right'>
+                  <span className='duration'>{record.data.duration}分钟</span>
+                </div>
+              </div>
               
-              <View className='card-stats'>
-                <Text className='stat'>RPE: {record.data.rpe}</Text>
-                {record.data.heartRate && <Text className='stat'>心率: {record.data.heartRate}</Text>}
-              </View>
+              <div className='card-stats'>
+                <span className='stat'>RPE: {record.data.rpe}</span>
+                {record.data.heartRate && <span className='stat'>心率: {record.data.heartRate}</span>}
+              </div>
 
               {record.data.notes && (
-                <Text className='notes'>"{record.data.notes}"</Text>
+                <p className='notes'>"{record.data.notes}"</p>
               )}
 
               {record.analysis ? (
-                <View className='analysis-box'>
-                  <Text className='ai-label'>🤖 AI 教练点评:</Text>
-                  <Text className='ai-content'>{record.analysis}</Text>
-                </View>
+                <div className='analysis-box'>
+                  <span className='ai-label'>🤖 AI 教练点评:</span>
+                  <p className='ai-content'>{record.analysis}</p>
+                </div>
               ) : (
-                <View className='card-actions'>
-                  <Button 
+                <div className='card-actions'>
+                  <button 
                     className='analyze-btn' 
-                    size='mini' 
                     onClick={() => handleAnalyze(record)}
                   >
                     AI 分析本次运动
-                  </Button>
-                </View>
+                  </button>
+                </div>
               )}
-            </View>
+            </div>
           ))}
-          <View className='spacer' style={{height: '20px'}}></View>
-        </ScrollView>
+        </div>
       )}
-    </View>
+    </div>
   )
 }
