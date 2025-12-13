@@ -34,6 +34,7 @@ interface PlanState {
   isGenerating: boolean
   setGenerating: (isGenerating: boolean) => void
   savePlan: (plan: TrainingPlan) => void
+  updatePlanWeeks: (weeks: TrainingWeek[]) => void
   clearPlan: () => void
 }
 
@@ -44,6 +45,11 @@ export const usePlanStore = create<PlanState>()(
       isGenerating: false,
       setGenerating: (isGenerating) => set({ isGenerating }),
       savePlan: (plan) => set({ currentPlan: plan }),
+      updatePlanWeeks: (weeks) => set((state) => ({
+        currentPlan: state.currentPlan 
+          ? { ...state.currentPlan, weeks } 
+          : null
+      })),
       clearPlan: () => set({ currentPlan: null }),
     }),
     {

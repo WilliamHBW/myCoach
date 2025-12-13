@@ -1,4 +1,82 @@
-// 全局样式
+// ========================================
+// CSS Variables - Strava-inspired Theme
+// ========================================
+:root {
+  // Primary Colors (Strava Orange)
+  --color-primary: #FC4C02;
+  --color-primary-hover: #E04502;
+  --color-primary-light: #FFF4F0;
+  --color-primary-gradient: linear-gradient(135deg, #FC4C02 0%, #FF6B35 100%);
+  
+  // Neutral Colors
+  --color-white: #FFFFFF;
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F5F5F5;
+  --color-gray-200: #EEEEEE;
+  --color-gray-300: #E0E0E0;
+  --color-gray-400: #BDBDBD;
+  --color-gray-500: #9E9E9E;
+  --color-gray-600: #757575;
+  --color-gray-700: #616161;
+  --color-gray-800: #424242;
+  --color-gray-900: #212121;
+  --color-black: #000000;
+  
+  // Background
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F7F7F7;
+  --color-bg-dark: #1A1A1A;
+  
+  // Text
+  --color-text-primary: #242428;
+  --color-text-secondary: #6D6D78;
+  --color-text-muted: #A0A0A8;
+  --color-text-inverse: #FFFFFF;
+  
+  // Status Colors
+  --color-success: #14B866;
+  --color-success-light: #E8F8EF;
+  --color-warning: #F5A623;
+  --color-warning-light: #FFF8E6;
+  --color-error: #E03E3E;
+  --color-error-light: #FDECEC;
+  
+  // Layout
+  --header-height: 64px;
+  --footer-height: 60px;
+  --max-content-width: 1200px;
+  --sidebar-width: 280px;
+  
+  // Spacing
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  // Border Radius
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+  
+  // Transitions
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+// ========================================
+// Global Reset & Base Styles
+// ========================================
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,30 +90,35 @@ html, body, #root {
 body {
   font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
 }
 
-// Toast 样式
+// ========================================
+// Toast Styles
+// ========================================
 .custom-toast {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
+  transform: translate(-50%, -50%) scale(0.9);
+  background-color: var(--color-gray-900);
+  color: var(--color-text-inverse);
+  padding: 16px 32px;
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  font-weight: 500;
   z-index: 10000;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: all var(--transition-normal);
   pointer-events: none;
-  max-width: 80%;
+  max-width: 400px;
   text-align: center;
+  box-shadow: var(--shadow-xl);
 
   &.show {
     opacity: 1;
@@ -43,47 +126,51 @@ body {
   }
 
   &.toast-success {
-    background-color: rgba(7, 193, 96, 0.95);
+    background: var(--color-success);
   }
 
   &.toast-error {
-    background-color: rgba(255, 77, 79, 0.95);
+    background: var(--color-error);
   }
 }
 
-// Loading 样式
+// ========================================
+// Loading Styles
+// ========================================
 .custom-loading {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-normal);
 
   &.show {
     opacity: 1;
   }
 
   .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   span {
-    color: #fff;
-    font-size: 14px;
+    color: var(--color-text-inverse);
+    font-size: 16px;
+    font-weight: 500;
   }
 }
 
@@ -93,70 +180,73 @@ body {
   }
 }
 
-// Modal 样式
+// ========================================
+// Modal Styles
+// ========================================
 .custom-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   opacity: 0;
-  transition: opacity 0.3s ease;
-  padding: 20px;
+  transition: opacity var(--transition-normal);
+  padding: 24px;
 
   &.show {
     opacity: 1;
   }
 
   .custom-modal {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    max-width: 320px;
+    background: var(--color-white);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    max-width: 420px;
     width: 100%;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-xl);
 
     .modal-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-primary);
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
 
     .modal-content {
-      font-size: 14px;
-      color: #666;
+      font-size: 15px;
+      color: var(--color-text-secondary);
       text-align: center;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      line-height: 1.7;
+      margin-bottom: 28px;
     }
 
     .modal-actions {
       display: flex;
-      gap: 12px;
+      gap: 16px;
 
       .modal-btn {
         flex: 1;
-        padding: 12px;
-        border-radius: 25px;
+        padding: 14px 24px;
+        border-radius: var(--radius-full);
         font-size: 15px;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all var(--transition-fast);
         border: none;
 
         &.cancel {
-          background: #f5f5f5;
-          color: #666;
+          background: var(--color-gray-100);
+          color: var(--color-text-secondary);
 
           &:hover {
-            background: #eee;
+            background: var(--color-gray-200);
           }
 
           &:empty {
@@ -165,12 +255,12 @@ body {
         }
 
         &.confirm {
-          background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
-          color: #fff;
+          background: var(--color-primary-gradient);
+          color: var(--color-text-inverse);
 
           &:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(7, 193, 96, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(252, 76, 2, 0.4);
           }
         }
       }
@@ -178,7 +268,9 @@ body {
   }
 }
 
-// 通用按钮样式
+// ========================================
+// Common Button Styles
+// ========================================
 button {
   cursor: pointer;
   border: none;
@@ -186,7 +278,7 @@ button {
   font-family: inherit;
   
   &:active {
-    opacity: 0.8;
+    opacity: 0.9;
   }
 
   &:disabled {
@@ -195,104 +287,464 @@ button {
   }
 }
 
-// 输入框样式
+// ========================================
+// Input Styles
+// ========================================
 input, textarea, select {
   outline: none;
   font-family: inherit;
   
   &:focus {
-    border-color: #07c160;
+    border-color: var(--color-primary);
   }
 }
 
-// 滚动条样式
+// ========================================
+// Scrollbar Styles
+// ========================================
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-gray-100);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
+  background: var(--color-gray-400);
+  border-radius: 4px;
   
   &:hover {
-    background: #999;
+    background: var(--color-gray-500);
   }
 }
 
 ::selection {
-  background-color: rgba(7, 193, 96, 0.2);
+  background-color: rgba(252, 76, 2, 0.15);
 }
 
-// App 容器
+// ========================================
+// App Container
+// ========================================
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-width: 480px;
-  margin: 0 auto;
-  background-color: #fff;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  position: relative;
+  background-color: var(--color-bg-secondary);
+}
 
-  @media (max-width: 480px) {
-    max-width: 100%;
-    box-shadow: none;
+// ========================================
+// Header Styles
+// ========================================
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+  height: var(--header-height);
+  box-shadow: var(--shadow-sm);
+
+  .header-content {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    height: 100%;
+    padding: 0 var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    
+    .logo-icon {
+      font-size: 28px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    .logo-text {
+      font-size: 24px;
+      font-weight: 800;
+      background: var(--color-primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+  }
+
+  .main-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      text-decoration: none;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+      font-size: 15px;
+      border-radius: var(--radius-full);
+      transition: all var(--transition-fast);
+
+      .nav-icon {
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover {
+        color: var(--color-text-primary);
+        background: var(--color-gray-100);
+      }
+
+      &.active {
+        color: var(--color-primary);
+        background: var(--color-primary-light);
+
+        .nav-icon {
+          stroke: var(--color-primary);
+        }
+      }
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+
+      &:hover {
+        border-color: var(--color-primary);
+        background: var(--color-primary-light);
+      }
+    }
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+// ========================================
+// Main Content
+// ========================================
 .main-content {
   flex: 1;
-  overflow-y: auto;
-  padding-bottom: 60px;
-}
-
-.tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  height: 56px;
-  background: #fff;
-  border-top: 1px solid #eee;
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 100;
+  flex-direction: column;
 
-  @media (max-width: 480px) {
-    max-width: 100%;
+  .content-wrapper {
+    flex: 1;
+    max-width: var(--max-content-width);
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--spacing-xl) var(--spacing-lg);
   }
 }
 
-.tab-item {
+// ========================================
+// Footer Styles
+// ========================================
+.app-footer {
+  background: var(--color-bg-dark);
+  color: var(--color-text-muted);
+  padding: var(--spacing-xl) 0;
+
+  .footer-content {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+    text-align: center;
+
+    p {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .footer-tagline {
+      font-size: 13px;
+      color: var(--color-gray-600);
+    }
+  }
+}
+
+// ========================================
+// Common Button Classes
+// ========================================
+.btn-primary {
+  background: var(--color-primary-gradient);
+  color: var(--color-text-inverse);
+  padding: 14px 32px;
+  border-radius: var(--radius-full);
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(252, 76, 2, 0.35);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.btn-secondary {
+  background: var(--color-gray-100);
+  color: var(--color-text-secondary);
+  padding: 14px 32px;
+  border-radius: var(--radius-full);
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--color-gray-200);
+    color: var(--color-text-primary);
+  }
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  padding: 14px 32px;
+  border-radius: var(--radius-full);
+  font-size: 16px;
+  font-weight: 600;
+  border: 2px solid var(--color-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+  }
+}
+
+// ========================================
+// Responsive Styles - Tablet
+// ========================================
+@media (max-width: 1024px) {
+  .main-content .content-wrapper {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+}
+
+// ========================================
+// Responsive Styles - Mobile
+// ========================================
+@media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  .app-header {
+    .header-content {
+      padding: 0 var(--spacing-md);
+    }
+
+    .logo {
+      .logo-icon {
+        font-size: 24px;
+      }
+      .logo-text {
+        font-size: 20px;
+      }
+    }
+
+    .main-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-white);
+      border-top: 1px solid var(--color-gray-200);
+      padding: 8px 16px;
+      justify-content: space-around;
+      z-index: 100;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+
+      .nav-link {
+        flex-direction: column;
+        padding: 8px 16px;
+        font-size: 12px;
+        gap: 4px;
+
+        .nav-icon {
+          width: 24px;
+          height: 24px;
+        }
+      }
+    }
+
+    .header-right {
+      .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+      }
+    }
+  }
+
+  .main-content .content-wrapper {
+    padding: var(--spacing-md);
+    padding-bottom: calc(80px + var(--spacing-md));
+  }
+
+  .app-footer {
+    display: none;
+  }
+}
+
+// ========================================
+// Card Component Base
+// ========================================
+.card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+// ========================================
+// Page Title Component
+// ========================================
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xl);
+}
+
+// ========================================
+// Empty State Component
+// ========================================
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
-  color: #999;
-  font-size: 12px;
-  padding: 4px 0;
-  transition: color 0.2s ease;
+  padding: var(--spacing-2xl);
+  text-align: center;
+  min-height: 400px;
 
-  &.active {
-    color: #07c160;
+  .empty-illustration {
+    width: 200px;
+    height: 200px;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.8;
   }
 
-  .tab-icon {
+  .empty-icon {
+    font-size: 80px;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.9;
+  }
+
+  .empty-title {
     font-size: 20px;
-    margin-bottom: 2px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-sm);
   }
 
-  .tab-text {
-    font-size: 11px;
+  .empty-description {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-xl);
+    max-width: 320px;
   }
 }
 
+// ========================================
+// Stats Grid Component
+// ========================================
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+
+  .stat-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    border: 1px solid var(--color-gray-200);
+    transition: all var(--transition-fast);
+
+    &:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 14px;
+      color: var(--color-text-muted);
+    }
+  }
+}

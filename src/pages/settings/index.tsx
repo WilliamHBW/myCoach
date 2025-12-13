@@ -15,15 +15,18 @@ export default function Settings() {
     modelProvider,
     customBaseUrl,
     customModel,
-    systemPrompt, 
     setApiKey, 
     setModelProvider,
     setCustomBaseUrl,
-    setCustomModel,
-    setSystemPrompt 
+    setCustomModel
   } = useSettingsStore()
 
   const handleSave = () => {
+    if (!apiKey) {
+      showToast('请填写 API Key', 'error')
+      return
+    }
+    
     if (modelProvider === 'custom' && !customBaseUrl) {
       showToast('请填写自定义 API 地址', 'error')
       return
@@ -38,7 +41,7 @@ export default function Settings() {
   return (
     <div className='settings-page'>
       <div className='section'>
-        <h3 className='section-title'>模型选择</h3>
+        <h3 className='section-title'>🤖 模型选择</h3>
         <select
           className='select-input'
           value={modelProvider}
@@ -57,7 +60,7 @@ export default function Settings() {
 
       {isCustomProvider && (
         <div className='section custom-api-section'>
-          <h3 className='section-title'>自定义 API 地址</h3>
+          <h3 className='section-title'>🔗 自定义 API 地址</h3>
           <input
             className='input'
             type='text'
@@ -69,7 +72,7 @@ export default function Settings() {
             填写 OpenAI 兼容的 API 地址（无需 /chat/completions 后缀）
           </p>
 
-          <h3 className='section-title' style={{ marginTop: '20px' }}>模型名称</h3>
+          <h3 className='section-title' style={{ marginTop: '20px' }}>📦 模型名称</h3>
           <input
             className='input'
             type='text'
@@ -82,7 +85,7 @@ export default function Settings() {
       )}
 
       <div className='section'>
-        <h3 className='section-title'>API Key</h3>
+        <h3 className='section-title'>🔑 API Key</h3>
         <input
           className='input'
           type='password'
@@ -93,15 +96,15 @@ export default function Settings() {
         <p className='hint'>您的 Key 仅存储在本地浏览器，不会上传到任何服务器。</p>
       </div>
 
-      <div className='section'>
-        <h3 className='section-title'>系统提示词 (System Prompt)</h3>
-        <textarea
-          className='textarea'
-          placeholder='设置 AI 教练的人设...'
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          maxLength={500}
-        />
+      <div className='info-card'>
+        <span className='info-icon'>🏋️</span>
+        <div className='info-content'>
+          <p className='info-title'>关于 AI 教练</p>
+          <p className='info-text'>
+            MyCoach 内置专业的运动科学提示词，由 CSCS 认证体能教练设计。
+            AI 将根据周期化训练原理、超量恢复等专业知识为您提供指导。
+          </p>
+        </div>
       </div>
 
       <div className='info-card'>

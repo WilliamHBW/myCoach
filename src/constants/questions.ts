@@ -23,33 +23,39 @@ export const TRAINING_QUESTIONS: Question[] = [
   },
   {
     id: 'goal',
-    type: 'single',
+    type: 'text',
     title: '您当前的训练目标是？',
-    options: ['减脂', '增肌', '提升心肺功能', '力量举/大力士', '保持健康']
+    placeholder: '请输入训练目标，例如：半年后完成一次马拉松。'
   },
   {
     id: 'level',
-    type: 'single',
-    title: '您评估自己当前的体能水平？',
-    options: ['新手 (少于3个月经验)', '初级 (3-12个月经验)', '中级 (1-3年经验)', '高级 (3年以上经验)']
+    type: 'text',
+    title: '您评估自己当前的运动水平？',
+    placeholder: '请输入您对自己运动水平的评估，例如：新手 (少于3个月经验)，或者您也可以列举您的跑步配速水平，骑行配速水平等'
   },
   {
     id: 'frequency',
-    type: 'single',
-    title: '您每周计划训练几天？',
-    options: ['2天', '3天', '4天', '5天', '6天']
+    type: 'multiple',
+    title: '您计划在每周哪几天训练？',
+    options: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
   },
   {
     id: 'equipment',
-    type: 'multiple',
+    type: 'text',
     title: '您可以使用的器械有哪些？',
-    options: ['健身房全套器械', '哑铃', '杠铃', '弹力带', '自重/无器械', '单车/跑步机']
+    placeholder: '请输入您可以使用的器械，例如：健身房全套器械，哑铃，杠铃，弹力带，自重/无器械，单车/跑步机'
   },
   {
     id: 'injuries',
     type: 'text',
     title: '您是否有伤病史或身体受限部位？',
     placeholder: '无则填“无”，有请详细描述（例如：左膝盖半月板损伤，不能做深蹲）'
-  }
+  },
+  {
+    id: 'additional',
+    type: 'text',
+    title: '您还有其他需要补充的需求吗？',
+    placeholder: '可以填写特殊目标、注意事项或其他个性化需求'
+  },
 ]
 

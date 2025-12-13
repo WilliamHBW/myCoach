@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { useRecordStore, WorkoutRecord } from '../../store/useRecordStore'
 import { useSettingsStore } from '../../store/useSettingsStore'
-import { LLMClient } from '../../services/ai/client'
+import { analyzeWorkoutRecord } from '../../services/ai'
 import { showToast, showLoading, hideLoading } from '../../utils/ui'
 import './index.scss'
 
 export default function RecordList() {
   const navigate = useNavigate()
   const { records, updateRecordAnalysis } = useRecordStore()
-  const { apiKey, modelProvider, customBaseUrl, customModel } = useSettingsStore()
+  const { apiKey } = useSettingsStore()
 
   const handleAdd = () => {
     navigate('/record/form')
@@ -20,38 +20,25 @@ export default function RecordList() {
       return
     }
 
-    showLoading('AI 分析中...')
+    showLoading('AI 教练分析中...')
     
     try {
-      const client = new LLMClient({
-        apiKey,
-        modelProvider,
-        baseUrl: modelProvider === 'custom' ? customBaseUrl : undefined,
-        model: modelProvider === 'custom' && customModel ? customModel : undefined,
-        temperature: 0.7
+      // 使用专业的分析提示词
+      const analysis = await analyzeWorkoutRecord({
+        type: record.data.type,
+        duration: record.data.duration,
+        rpe: record.data.rpe,
+        heartRate: record.data.heartRate,
+        notes: record.data.notes
       })
 
-      const prompt = `
-请分析我以下的运动数据，给出简短的专业点评和恢复建议：
-运动类型: ${record.data.type}
-时长: ${record.data.duration}分钟
-RPE(1-10): ${record.data.rpe}
-心率: ${record.data.heartRate || '未记录'}
-备注: ${record.data.notes || '无'}
-`
-
-      const response = await client.chatCompletion([
-        { role: 'system', content: '你是一个专业的体能教练，请用简练、鼓励的语气点评用户的训练。' },
-        { role: 'user', content: prompt }
-      ])
-
-      updateRecordAnalysis(record.id, response.content)
+      updateRecordAnalysis(record.id, analysis)
       hideLoading()
       showToast('分析完成', 'success')
 
-    } catch (e) {
+    } catch (e: any) {
       hideLoading()
-      showToast('分析失败，请重试', 'error')
+      showToast(e.message || '分析失败，请重试', 'error')
       console.error(e)
     }
   }
@@ -94,7 +81,7 @@ RPE(1-10): ${record.data.rpe}
 
               {record.analysis ? (
                 <div className='analysis-box'>
-                  <span className='ai-label'>🤖 AI 教练点评:</span>
+                  <span className='ai-label'>🏋️ AI 教练点评:</span>
                   <p className='ai-content'>{record.analysis}</p>
                 </div>
               ) : (

@@ -1,149 +1,282 @@
+// ========================================
+// Questionnaire Page Styles - Strava-inspired
+// ========================================
+
 .questionnaire-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 56px);
-  background: linear-gradient(180deg, #f8fffe 0%, #f7f8fa 100%);
+  min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--spacing-2xl) * 2);
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
+// ========================================
+// Progress Bar
+// ========================================
 .progress-bar {
-  height: 4px;
-  background: #e0e0e0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  height: 6px;
+  background: var(--color-gray-200);
+  position: relative;
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #07c160 0%, #10b981 100%);
-    transition: width 0.3s ease;
+    background: var(--color-primary-gradient);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 10px rgba(252, 76, 2, 0.3);
   }
 }
 
+// ========================================
+// Question Container
+// ========================================
 .question-container {
   flex: 1;
-  padding: 30px 20px;
+  padding: var(--spacing-2xl);
 
   .step-indicator {
     display: inline-block;
-    font-size: 12px;
-    color: #999;
-    background: #f0f0f0;
-    padding: 4px 12px;
-    border-radius: 12px;
-    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+    padding: 6px 16px;
+    border-radius: var(--radius-full);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
   }
 
   .question-title {
-    font-size: 22px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 30px;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xl);
     line-height: 1.4;
+    letter-spacing: -0.5px;
   }
 }
 
+// ========================================
+// Options List
+// ========================================
 .options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
 
   .option-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    background: #fff;
-    border: 2px solid #eee;
-    border-radius: 12px;
+    padding: 18px 24px;
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 
     span {
-      font-size: 15px;
-      color: #333;
+      font-size: 16px;
+      color: var(--color-text-primary);
+      font-weight: 500;
     }
 
     &:hover {
-      border-color: #b8e6c9;
-      background: #f8fffe;
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+
+      span {
+        color: var(--color-primary);
+      }
     }
 
     &.selected {
-      border-color: #07c160;
-      background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+      box-shadow: 0 4px 16px rgba(252, 76, 2, 0.15);
 
       span {
-        color: #07c160;
-        font-weight: 500;
+        color: var(--color-primary);
+        font-weight: 600;
       }
     }
 
     .check-mark {
-      color: #07c160;
+      color: var(--color-primary);
       font-weight: bold;
-      font-size: 18px;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--color-primary);
+      color: var(--color-white);
+      border-radius: 50%;
+      font-size: 14px;
     }
   }
 }
 
+// ========================================
+// Input Container
+// ========================================
 .input-container {
   .text-input {
     width: 100%;
-    min-height: 120px;
-    padding: 16px;
-    border: 2px solid #eee;
-    border-radius: 12px;
-    font-size: 15px;
+    min-height: 160px;
+    padding: 20px;
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    font-size: 16px;
     resize: none;
-    transition: border-color 0.2s;
+    transition: all var(--transition-fast);
     font-family: inherit;
+    line-height: 1.7;
+    background: var(--color-white);
+    color: var(--color-text-primary);
 
     &:focus {
       outline: none;
-      border-color: #07c160;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px rgba(252, 76, 2, 0.1);
+    }
+
+    &:hover {
+      border-color: var(--color-gray-400);
     }
 
     &::placeholder {
-      color: #bbb;
+      color: var(--color-text-muted);
     }
   }
 }
 
+// ========================================
+// Actions
+// ========================================
 .actions {
   display: flex;
-  gap: 12px;
-  padding: 20px;
-  background: #fff;
-  border-top: 1px solid #eee;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  background: var(--color-gray-50);
+  border-top: 1px solid var(--color-gray-200);
 
   .btn {
     flex: 1;
-    padding: 14px;
-    border-radius: 25px;
+    padding: 16px 32px;
+    border-radius: var(--radius-full);
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-fast);
 
     &.primary {
-      background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
-      color: white;
+      background: var(--color-primary-gradient);
+      color: var(--color-text-inverse);
       border: none;
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(7, 193, 96, 0.4);
+        box-shadow: 0 6px 20px rgba(252, 76, 2, 0.4);
       }
     }
 
     &.secondary {
-      background: #f5f5f5;
-      color: #666;
-      border: none;
+      background: var(--color-white);
+      color: var(--color-text-secondary);
+      border: 2px solid var(--color-gray-300);
 
       &:hover {
-        background: #eee;
+        background: var(--color-gray-100);
+        border-color: var(--color-gray-400);
+        color: var(--color-text-primary);
       }
+    }
+  }
+}
+
+// ========================================
+// Responsive - Tablet
+// ========================================
+@media (max-width: 1024px) {
+  .questionnaire-page {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+  }
+
+  .question-container {
+    padding: var(--spacing-xl);
+
+    .question-title {
+      font-size: 24px;
+    }
+  }
+
+  .options-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ========================================
+// Responsive - Mobile
+// ========================================
+@media (max-width: 768px) {
+  .questionnaire-page {
+    border-radius: 0;
+    box-shadow: none;
+    min-height: auto;
+  }
+
+  .progress-bar {
+    height: 4px;
+  }
+
+  .question-container {
+    padding: var(--spacing-lg);
+
+    .step-indicator {
+      font-size: 12px;
+      padding: 5px 12px;
+    }
+
+    .question-title {
+      font-size: 20px;
+      margin-bottom: var(--spacing-lg);
+    }
+  }
+
+  .options-list {
+    gap: var(--spacing-sm);
+
+    .option-item {
+      padding: 14px 18px;
+
+      span {
+        font-size: 15px;
+      }
+    }
+  }
+
+  .input-container {
+    .text-input {
+      min-height: 120px;
+      padding: 16px;
+      font-size: 15px;
+    }
+  }
+
+  .actions {
+    padding: var(--spacing-md);
+
+    .btn {
+      padding: 14px 24px;
+      font-size: 15px;
     }
   }
 }

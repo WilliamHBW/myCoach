@@ -1,183 +1,328 @@
+// ========================================
+// Record List Page Styles - Strava-inspired
+// ========================================
+
 .record-list-page {
-  min-height: calc(100vh - 56px);
-  background: #f7f8fa;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--spacing-2xl) * 2);
 }
 
+// ========================================
+// Empty State
+// ========================================
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100vh - 56px);
-  padding: 20px;
+  min-height: 60vh;
+  padding: var(--spacing-2xl);
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
 
   .empty-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
+    font-size: 96px;
+    margin-bottom: var(--spacing-lg);
+    animation: pulse 2s ease-in-out infinite;
   }
 
   .desc {
-    font-size: 18px;
-    color: #333;
-    margin-bottom: 8px;
+    font-size: 22px;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
   }
 
   .hint {
-    font-size: 14px;
-    color: #999;
-    margin-bottom: 30px;
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-xl);
+    max-width: 320px;
+    line-height: 1.6;
   }
 
   .add-btn {
-    background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
-    color: white;
-    padding: 12px 40px;
-    border-radius: 25px;
-    font-size: 16px;
-    font-weight: 500;
+    background: var(--color-primary-gradient);
+    color: var(--color-text-inverse);
+    padding: 16px 48px;
+    border-radius: var(--radius-full);
+    font-size: 17px;
+    font-weight: 600;
     border: none;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all var(--transition-fast);
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(7, 193, 96, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(252, 76, 2, 0.4);
     }
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+// ========================================
+// List Container
+// ========================================
 .list-container {
-  padding: 15px;
+  // Nothing needed here
 }
 
 .action-header {
-  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
 
   .add-btn-small {
-    background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
+    background: var(--color-primary-gradient);
+    color: var(--color-text-inverse);
+    padding: 12px 28px;
+    border-radius: var(--radius-full);
+    font-size: 15px;
+    font-weight: 600;
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 
     &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(7, 193, 96, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(252, 76, 2, 0.35);
     }
+  }
+}
+
+// ========================================
+// Record Cards Grid for PC
+// ========================================
+.record-list-page .list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: var(--spacing-lg);
+
+  .action-header {
+    grid-column: 1 / -1;
   }
 }
 
 .record-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-primary-light);
+    transform: translateY(-2px);
+  }
 
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: var(--spacing-md);
 
     .left {
       .type {
-        font-size: 16px;
-        font-weight: 600;
-        color: #333;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-text-primary);
         display: block;
         margin-bottom: 4px;
       }
 
       .date {
-        font-size: 12px;
-        color: #999;
+        font-size: 13px;
+        color: var(--color-text-muted);
       }
     }
 
     .right {
       .duration {
-        background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
-        color: #07c160;
-        padding: 6px 12px;
-        border-radius: 15px;
+        background: var(--color-primary-gradient);
+        color: var(--color-text-inverse);
+        padding: 8px 16px;
+        border-radius: var(--radius-full);
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+
+        &::before {
+          content: '⏱️';
+        }
       }
     }
   }
 
   .card-stats {
     display: flex;
-    gap: 15px;
-    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 
     .stat {
-      font-size: 13px;
-      color: #666;
-      background: #f5f5f5;
-      padding: 4px 10px;
-      border-radius: 8px;
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      background: var(--color-gray-100);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-weight: 500;
     }
   }
 
   .notes {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
     font-style: italic;
-    margin: 10px 0;
-    padding: 10px;
-    background: #fafafa;
-    border-radius: 8px;
-    border-left: 3px solid #07c160;
+    margin: var(--spacing-md) 0;
+    padding: var(--spacing-md);
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-primary);
+    line-height: 1.6;
   }
 
   .analysis-box {
-    background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
-    border-radius: 10px;
-    padding: 12px;
-    margin-top: 12px;
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, #FFF9F7 100%);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    border: 1px solid rgba(252, 76, 2, 0.1);
 
     .ai-label {
-      font-size: 13px;
-      color: #07c160;
-      font-weight: 500;
-      display: block;
-      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--color-primary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-sm);
     }
 
     .ai-content {
       font-size: 14px;
-      color: #333;
-      line-height: 1.6;
+      color: var(--color-text-primary);
+      line-height: 1.7;
       margin: 0;
       white-space: pre-wrap;
     }
   }
 
   .card-actions {
-    margin-top: 12px;
+    margin-top: var(--spacing-md);
     
     .analyze-btn {
       width: 100%;
-      background: #f5f5f5;
-      color: #666;
-      border: 1px dashed #ddd;
-      padding: 10px;
-      border-radius: 8px;
+      background: var(--color-gray-100);
+      color: var(--color-text-secondary);
+      border: 2px dashed var(--color-gray-300);
+      padding: 12px;
+      border-radius: var(--radius-md);
       font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+
+      &::before {
+        content: '🤖';
+        font-size: 16px;
+      }
 
       &:hover {
-        background: #e8f5e9;
-        color: #07c160;
-        border-color: #07c160;
+        background: var(--color-primary-light);
+        color: var(--color-primary);
+        border-color: var(--color-primary);
+        border-style: solid;
       }
     }
+  }
+}
+
+// ========================================
+// Responsive - Tablet
+// ========================================
+@media (max-width: 1024px) {
+  .record-list-page .list-container {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}
+
+// ========================================
+// Responsive - Mobile
+// ========================================
+@media (max-width: 768px) {
+  .record-list-page {
+    min-height: auto;
+  }
+
+  .empty-state {
+    min-height: 50vh;
+    padding: var(--spacing-xl);
+
+    .empty-icon {
+      font-size: 72px;
+    }
+
+    .desc {
+      font-size: 18px;
+    }
+
+    .add-btn {
+      padding: 14px 36px;
+      font-size: 16px;
+    }
+  }
+
+  .record-list-page .list-container {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  .record-card {
+    padding: var(--spacing-md);
+
+    .card-header {
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+
+      .left .type {
+        font-size: 16px;
+      }
+
+      .right .duration {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+    }
+
+    .card-stats .stat {
+      font-size: 13px;
+      padding: 5px 12px;
+    }
+  }
+
+  .action-header .add-btn-small {
+    padding: 10px 20px;
+    font-size: 14px;
   }
 }
