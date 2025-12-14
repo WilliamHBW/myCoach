@@ -158,6 +158,119 @@
 }
 
 // ========================================
+// Confirm Step
+// ========================================
+.confirm-section {
+  .confirm-info {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .confirm-hint {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin: 0;
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid #3b82f6;
+  }
+}
+
+.date-picker-section {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-gray-50);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-gray-200);
+
+  .date-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .date-input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--color-white);
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(252, 76, 2, 0.1);
+    }
+
+    &:hover {
+      border-color: var(--color-primary-light);
+    }
+  }
+
+  .date-display {
+    display: block;
+    margin-top: var(--spacing-sm);
+    font-size: 15px;
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+}
+
+.summary-section {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-gray-200);
+  overflow: hidden;
+
+  .summary-title {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-gray-100);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+
+  .summary-items {
+    padding: var(--spacing-md);
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-md);
+
+    &:not(:last-child) {
+      border-bottom: 1px dashed var(--color-gray-200);
+    }
+
+    .item-label {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    .item-value {
+      font-size: 14px;
+      color: var(--color-text-primary);
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+    }
+  }
+}
+
+// ========================================
 // Actions
 // ========================================
 .actions {
@@ -277,6 +390,42 @@
     .btn {
       padding: 14px 24px;
       font-size: 15px;
+    }
+  }
+
+  .confirm-section {
+    .confirm-hint {
+      font-size: 14px;
+      padding: var(--spacing-md);
+    }
+  }
+
+  .date-picker-section {
+    padding: var(--spacing-md);
+
+    .date-input {
+      padding: 12px 14px;
+      font-size: 15px;
+    }
+
+    .date-display {
+      font-size: 14px;
+    }
+  }
+
+  .summary-section {
+    .summary-title {
+      font-size: 14px;
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .summary-item {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+
+      .item-value {
+        text-align: left;
+      }
     }
   }
 }

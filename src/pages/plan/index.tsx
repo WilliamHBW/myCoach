@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePlanStore } from '../../store/usePlanStore'
 import { useSettingsStore } from '../../store/useSettingsStore'
@@ -6,6 +6,21 @@ import { modifyPlanWithChat } from '../../services/ai'
 import { generateICS } from '../../utils/calendar'
 import { showToast, showConfirm, showLoading, hideLoading } from '../../utils/ui'
 import './index.scss'
+
+// 星期几对应的索引（周一为起点）
+const DAY_INDEX_MAP: Record<string, number> = {
+  '周一': 0, '周二': 1, '周三': 2, '周四': 3, '周五': 4, '周六': 5, '周日': 6
+}
+
+// 根据周数和星期获取具体日期
+function getDayDate(startDate: string, weekNumber: number, dayName: string): string {
+  const start = new Date(startDate)
+  const dayOffset = DAY_INDEX_MAP[dayName] ?? 0
+  const totalDays = (weekNumber - 1) * 7 + dayOffset
+  const targetDate = new Date(start)
+  targetDate.setDate(start.getDate() + totalDays)
+  return `${targetDate.getMonth() + 1}/${targetDate.getDate()}`
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -152,18 +167,29 @@ export default function Plan() {
   const weeks = currentPlan.weeks || []
   const currentWeekData = weeks[activeWeek]
 
+  // 获取当天日期
+  const today = new Date()
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日 ${weekDays[today.getDay()]}`
+
   return (
     <div className='plan-container'>
-      <div className='week-tabs'>
-        {weeks.map((week, index) => (
-          <div
-            key={week.weekNumber}
-            className={`week-tab ${activeWeek === index ? 'active' : ''}`}
-            onClick={() => setActiveWeek(index)}
-          >
-            第 {week.weekNumber} 周
-          </div>
-        ))}
+      <div className='week-tabs-container'>
+        <div className='week-tabs'>
+          {weeks.map((week, index) => (
+            <div
+              key={week.weekNumber}
+              className={`week-tab ${activeWeek === index ? 'active' : ''}`}
+              onClick={() => setActiveWeek(index)}
+            >
+              第 {week.weekNumber} 周
+            </div>
+          ))}
+        </div>
+        <div className='today-date'>
+          <span className='date-icon'>📅</span>
+          <span className='date-text'>{formattedDate}</span>
+        </div>
       </div>
 
       <div className='plan-content'>
@@ -174,23 +200,31 @@ export default function Plan() {
               <p className='summary-text'>{currentWeekData.summary}</p>
             </div>
             
-            {currentWeekData.days.map((day, idx) => (
-              <div key={idx} className='day-card'>
-                <div className='day-header'>
-                  <span className='day-name'>{day.day}</span>
-                  <span className='day-focus'>{day.focus}</span>
-                </div>
-                <div className='exercises-list'>
-                  {day.exercises.map((ex, i) => (
-                    <div key={i} className='exercise-item'>
-                      <span className='ex-name'>{ex.name}</span>
-                      <span className='ex-detail'>{ex.sets}组 x {ex.reps}</span>
-                      {ex.notes && <span className='ex-notes'>{ex.notes}</span>}
+            {currentWeekData.days.map((day, idx) => {
+              const dayDate = currentPlan.startDate 
+                ? getDayDate(currentPlan.startDate, currentWeekData.weekNumber, day.day)
+                : ''
+              return (
+                <div key={idx} className='day-card'>
+                  <div className='day-header'>
+                    <div className='day-info'>
+                      <span className='day-name'>{day.day}</span>
+                      {dayDate && <span className='day-date'>{dayDate}</span>}
                     </div>
-                  ))}
+                    <span className='day-focus'>{day.focus}</span>
+                  </div>
+                  <div className='exercises-list'>
+                    {day.exercises.map((ex, i) => (
+                      <div key={i} className='exercise-item'>
+                        <span className='ex-name'>{ex.name}</span>
+                        <span className='ex-detail'>{ex.sets}组 x {ex.reps}</span>
+                        {ex.notes && <span className='ex-notes'>{ex.notes}</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className='empty-week'>暂无数据</div>

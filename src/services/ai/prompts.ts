@@ -229,6 +229,124 @@ ${userMessage}
 `
 }
 
+/**
+ * 5. 计划动态更新提示词 (Plan Update Prompt)
+ * 基于运动记录评估完成度并调整剩余计划
+ */
+export const PLAN_UPDATE_PROMPT = `你现在需要执行"训练计划动态调整"任务。
+
+### 输入数据
+你将收到以下信息：
+1. 当前训练计划（4周）
+2. 用户的运动记录（已与计划日期对齐）
+3. 计划进度（当前是第X周，已过Y天）
+
+### 你的任务
+
+#### 1. 完成度评估
+对每个有运动记录的计划日，综合评估完成度（0-100分）：
+- 90-100：完美完成，强度和内容都符合计划
+- 70-89：较好完成，大部分内容完成
+- 50-69：部分完成，有明显差距
+- 30-49：勉强完成，与计划差距较大
+- 0-29：几乎未完成或类型完全不符
+
+考虑因素：
+- 运动类型是否匹配（如计划是力量训练，记录也是力量训练）
+- 训练时长是否合理
+- RPE（自感疲劳度）是否在目标范围
+- 专业数据（如有）是否达标
+
+#### 2. 趋势分析
+分析用户的整体执行情况：
+- 训练依从性（是否按计划日训练）
+- 强度适应性（RPE是否逐渐适应）
+- 恢复状态（是否有过度训练迹象）
+
+#### 3. 计划调整
+根据分析结果，调整剩余的训练计划（已完成的日期不修改）：
+- 如果完成度持续偏低，降低后续训练强度/量
+- 如果完成度良好且RPE偏低，可适当提升挑战
+- 如果发现某类训练缺失，在后续计划中补充
+- 确保调整符合周期化训练原则
+
+### 输出格式
+必须严格按照以下 JSON 格式输出，不要包含 markdown 代码块标记：
+
+{
+  "completionScores": [
+    { "weekNumber": 1, "day": "周一", "score": 85, "reason": "完成度良好，力量训练时长达标，RPE适中" },
+    { "weekNumber": 1, "day": "周三", "score": 60, "reason": "训练类型匹配但时长偏短，建议增加" }
+  ],
+  "overallAnalysis": "用户整体执行情况分析，包括优点和需要改进的地方...",
+  "adjustmentSummary": "调整说明：1. xxx 2. xxx 3. xxx",
+  "updatedWeeks": [
+    {
+      "weekNumber": 1,
+      "summary": "...",
+      "days": [...]
+    }
+  ]
+}
+
+### 注意事项
+- 必须用中文回复
+- completionScores 只包含有记录的天（跳过无记录的计划日）
+- updatedWeeks 必须包含完整的4周计划
+- 已过去的日期保持原样，只调整未来的训练
+- 调整要有理有据，基于运动科学原理`
+
+/**
+ * 生成计划更新的用户提示词
+ */
+export const generatePlanUpdatePrompt = (
+  currentPlan: any,
+  completionData: any,
+  progress: { weekNumber: number; dayName: string; daysPassed: number }
+) => {
+  // 构建已完成日期的记录摘要
+  const recordsSummary = completionData.completedDays.map((day: any) => ({
+    weekNumber: day.weekNumber,
+    day: day.day,
+    plannedFocus: day.planDay.focus,
+    plannedExercises: day.planDay.exercises.length,
+    records: day.records.map((r: any) => ({
+      type: r.data.type,
+      duration: r.data.duration,
+      rpe: r.data.rpe,
+      heartRate: r.data.heartRate,
+      notes: r.data.notes,
+      hasProData: !!r.data.proData
+    }))
+  }))
+
+  return `
+### 当前训练计划
+\`\`\`json
+${JSON.stringify(currentPlan.weeks, null, 2)}
+\`\`\`
+
+### 计划进度
+- 计划开始日期：${currentPlan.startDate}
+- 当前进度：第 ${progress.weekNumber} 周，${progress.dayName}
+- 已过天数：${progress.daysPassed} 天
+- 计划总天数：${currentPlan.weeks.length * 7} 天
+
+### 运动记录（已对齐到计划日期）
+共有 ${completionData.daysWithRecords} 天有运动记录：
+
+\`\`\`json
+${JSON.stringify(recordsSummary, null, 2)}
+\`\`\`
+
+### 请求
+请根据以上数据：
+1. 评估每个有记录的计划日的完成度（0-100分）
+2. 分析用户的整体训练执行情况
+3. 调整剩余的训练计划，使其更适合用户的实际情况
+`
+}
+
 // 保持向后兼容的导出
 export const SYSTEM_PROMPT_TEMPLATE = `${SYSTEM_PROMPT}
 

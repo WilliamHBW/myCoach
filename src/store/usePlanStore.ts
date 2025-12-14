@@ -25,6 +25,7 @@ export interface TrainingWeek {
 export interface TrainingPlan {
   id: string
   createdAt: number
+  startDate: string  // 计划开始日期，格式：YYYY-MM-DD（第1周周一对应的日期）
   weeks: TrainingWeek[]
   userProfile: UserProfile
 }

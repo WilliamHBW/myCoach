@@ -4,12 +4,16 @@ import {
   PLAN_GENERATION_PROMPT, 
   PERFORMANCE_ANALYSIS_PROMPT,
   PLAN_MODIFICATION_PROMPT,
+  PLAN_UPDATE_PROMPT,
   generateUserPrompt,
   generateAnalysisPrompt,
-  generatePlanModificationPrompt
+  generatePlanModificationPrompt,
+  generatePlanUpdatePrompt
 } from './prompts'
 import { useSettingsStore } from '../../store/useSettingsStore'
-import { TrainingPlan, UserProfile } from '../../store/usePlanStore'
+import { TrainingPlan, TrainingWeek, UserProfile } from '../../store/usePlanStore'
+import { WorkoutRecord } from '../../store/useRecordStore'
+import { getCompletionData, getCurrentProgress, CompletionSummary } from '../../utils/planDateMatcher'
 
 /**
  * 清理 JSON 字符串，移除可能的 markdown 代码块标记
@@ -78,9 +82,13 @@ export const generateTrainingPlan = async (userProfile: UserProfile): Promise<Tr
       throw new Error('生成的数据结构不正确 (缺少 weeks)')
     }
 
+    // 获取开始日期，默认为今天
+    const startDate = userProfile.startDate as string || new Date().toISOString().split('T')[0]
+
     const trainingPlan: TrainingPlan = {
       id: Date.now().toString(),
       createdAt: Date.now(),
+      startDate: startDate,
       userProfile: userProfile,
       weeks: planData.weeks
     }
@@ -196,6 +204,78 @@ export const modifyPlanWithChat = async (
 
   } catch (error) {
     console.error('Plan Modification Failed:', error)
+    throw error
+  }
+}
+
+/**
+ * 计划更新结果
+ */
+export interface PlanUpdateResult {
+  completionScores: Array<{
+    weekNumber: number
+    day: string
+    score: number
+    reason: string
+  }>
+  overallAnalysis: string
+  adjustmentSummary: string
+  updatedWeeks: TrainingWeek[]
+}
+
+/**
+ * 基于运动记录更新训练计划
+ * 评估完成度并调整剩余计划
+ */
+export const updatePlanWithRecords = async (
+  plan: TrainingPlan,
+  records: WorkoutRecord[]
+): Promise<PlanUpdateResult> => {
+  const client = getConfiguredClient()
+
+  // 获取完成度数据
+  const completionData = getCompletionData(plan, records)
+  const progress = getCurrentProgress(plan)
+
+  // 检查是否有可分析的数据
+  if (completionData.daysWithRecords === 0) {
+    throw new Error('没有找到计划周期内的运动记录，无法进行分析')
+  }
+
+  // 组合系统提示词：底层人设 + 计划更新指令
+  const systemPrompt = `${SYSTEM_PROMPT}\n\n${PLAN_UPDATE_PROMPT}`
+  const userPrompt = generatePlanUpdatePrompt(plan, completionData, progress)
+
+  try {
+    const response = await client.chatCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ])
+
+    const cleanedContent = cleanJsonString(response.content)
+    let result: any
+
+    try {
+      result = JSON.parse(cleanedContent)
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError, 'Raw Content:', response.content)
+      throw new Error('AI 返回的数据格式有误，请重试')
+    }
+
+    // 验证返回结构
+    if (!result.completionScores || !result.overallAnalysis || !result.updatedWeeks) {
+      throw new Error('AI 返回的数据结构不完整')
+    }
+
+    return {
+      completionScores: result.completionScores,
+      overallAnalysis: result.overallAnalysis,
+      adjustmentSummary: result.adjustmentSummary || '',
+      updatedWeeks: result.updatedWeeks
+    }
+
+  } catch (error) {
+    console.error('Plan Update Failed:', error)
     throw error
   }
 }
