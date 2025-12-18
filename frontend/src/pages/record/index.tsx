@@ -256,9 +256,12 @@ export default function RecordList() {
                 <div className='left'>
                   <span className='type'>{record.data.type}</span>
                   <span className='date'>{record.data.date}</span>
+                  {record.data.source && (
+                    <span className='source-badge'>{record.data.source === 'intervals.icu' ? '📊' : ''}</span>
+                  )}
                 </div>
                 <div className='right'>
-                  <span className='duration'>{record.data.duration}分钟</span>
+                  {record.data.duration && <span className='duration'>{record.data.duration}分钟</span>}
                   <button 
                     className='delete-btn'
                     onClick={() => handleDeleteRecord(record)}
@@ -270,8 +273,11 @@ export default function RecordList() {
               </div>
               
               <div className='card-stats'>
-                <span className='stat'>RPE: {record.data.rpe}</span>
+                {record.data.rpe && <span className='stat'>RPE: {record.data.rpe}</span>}
                 {record.data.heartRate && <span className='stat'>心率: {record.data.heartRate}</span>}
+                {!record.data.duration && !record.data.heartRate && record.data.source === 'intervals.icu' && (
+                  <span className='stat hint'>来自 Intervals.icu 同步</span>
+                )}
               </div>
 
               {/* 专业数据展示 */}

@@ -102,8 +102,12 @@ export function deleteSyncedRecord(id: string): void {
   db.prepare('DELETE FROM synced_records WHERE id = ?').run(id)
 }
 
-export function updateLocalRecordId(intervalsId: string, localRecordId: string): void {
+export function updateLocalRecordId(intervalsId: string, localRecordId: string | null): void {
   db.prepare('UPDATE synced_records SET local_record_id = ? WHERE id = ?').run(localRecordId, intervalsId)
+}
+
+export function clearLocalRecordId(intervalsId: string): void {
+  db.prepare('UPDATE synced_records SET local_record_id = NULL WHERE id = ?').run(intervalsId)
 }
 
 export function getSyncedRecordByLocalId(localRecordId: string): SyncedRecord | null {

@@ -89,24 +89,40 @@ export class IntervalsService {
 
   /**
    * Sync activities from Intervals.icu to local database
+   * Fetches detailed data for each activity when available
    */
   async syncActivities(oldest: string, newest: string): Promise<SyncResult> {
     const activities = await this.getActivities(oldest, newest)
     let synced = 0
+    const detailedActivities: IntervalsActivity[] = []
 
     for (const activity of activities) {
       try {
+        // Try to get detailed activity data
+        let detailedActivity = activity
+        try {
+          const detailed = await this.getActivity(activity.id)
+          if (detailed && detailed.type) {
+            detailedActivity = detailed
+            console.log(`[Intervals] Got detailed data for activity ${activity.id}: ${detailed.type}`)
+          }
+        } catch (detailError) {
+          // If detailed fetch fails (e.g., STRAVA activities), use basic data
+          console.log(`[Intervals] Using basic data for activity ${activity.id} (detailed fetch failed)`)
+        }
+
         const existing = getSyncedRecord(activity.id)
         
         // Always update to get latest data
         upsertSyncedRecord({
           id: activity.id,
-          intervals_data: JSON.stringify(activity),
+          intervals_data: JSON.stringify(detailedActivity),
           synced_at: Date.now(),
           start_date: activity.start_date_local.split('T')[0],
           local_record_id: existing?.local_record_id
         })
         
+        detailedActivities.push(detailedActivity)
         synced++
       } catch (error) {
         console.error(`Failed to sync activity ${activity.id}:`, error)
@@ -116,7 +132,7 @@ export class IntervalsService {
     return {
       synced,
       total: activities.length,
-      activities
+      activities: detailedActivities
     }
   }
 

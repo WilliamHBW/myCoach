@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { getSetting, setSetting, deleteSetting, getAllSyncedRecords, updateLocalRecordId, getSyncedRecord } from '../db/index.js'
+import { getSetting, setSetting, deleteSetting, getAllSyncedRecords, updateLocalRecordId, getSyncedRecord, clearLocalRecordId } from '../db/index.js'
 import { IntervalsService, mapActivityToRecord, IntervalsActivity } from '../services/intervals.js'
 import { backendClient } from '../services/backend.js'
 
@@ -154,6 +154,25 @@ router.get('/records', (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Failed to get records:', error)
     res.status(500).json({ error: 'Failed to get records', message: error.message })
+  }
+})
+
+// Clear all local_record_ids (force resync)
+router.post('/reset', (_req: Request, res: Response) => {
+  try {
+    const records = getAllSyncedRecords()
+    let cleared = 0
+    for (const record of records) {
+      if (record.local_record_id) {
+        clearLocalRecordId(record.id)  // Clear the local_record_id to NULL
+        cleared++
+      }
+    }
+    console.log(`[Reset] Cleared ${cleared} local_record_ids`)
+    res.json({ success: true, cleared, message: `Cleared ${cleared} local record references. Run sync again to recreate records.` })
+  } catch (error: any) {
+    console.error('Failed to reset:', error)
+    res.status(500).json({ error: 'Failed to reset', message: error.message })
   }
 })
 

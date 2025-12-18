@@ -104,12 +104,13 @@ async function processWebhookEvent(event: WebhookEvent): Promise<{ created: bool
         for (const calEvent of event.events) {
           if (calEvent.type) {
             // Convert calendar event to activity format
+            const { id, start_date_local, type, icu_training_load, ...restCalEvent } = calEvent
             const result = await saveActivityAndCreateRecord({
-              id: `cal_${calEvent.id}`,
-              start_date_local: calEvent.start_date_local,
-              type: calEvent.type,
-              icu_training_load: calEvent.icu_training_load,
-              ...calEvent
+              id: `cal_${id}`,
+              start_date_local,
+              type,
+              icu_training_load,
+              ...restCalEvent
             })
             if (result.created) {
               anyCreated = true

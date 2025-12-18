@@ -208,7 +208,18 @@
       padding: 6px 14px;
       border-radius: var(--radius-full);
       font-weight: 500;
+
+      &.hint {
+        background: var(--color-gray-50);
+        color: var(--color-text-tertiary);
+        font-style: italic;
+      }
     }
+  }
+
+  .source-badge {
+    margin-left: var(--spacing-xs);
+    font-size: 12px;
   }
 
   .notes {
