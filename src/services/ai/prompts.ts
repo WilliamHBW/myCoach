@@ -237,9 +237,10 @@ export const PLAN_UPDATE_PROMPT = `你现在需要执行"训练计划动态调�
 
 ### 输入数据
 你将收到以下信息：
-1. 当前训练计划（4周）
-2. 用户的运动记录（已与计划日期对齐）
-3. 计划进度（当前是第X周，已过Y天）
+1. 用户需求问卷（包含训练目标、可用器材、伤病史等约束条件）
+2. 当前训练计划（4周）
+3. 用户的运动记录（已与计划日期对齐）
+4. 计划进度（当前是第X周，已过Y天）
 
 ### 你的任务
 
@@ -270,6 +271,13 @@ export const PLAN_UPDATE_PROMPT = `你现在需要执行"训练计划动态调�
 - 如果发现某类训练缺失，在后续计划中补充
 - 确保调整符合周期化训练原则
 
+#### 4. 必须遵守的用户约束（重要！）
+调整计划时，必须严格遵守用户问卷中的约束条件：
+- **训练日**：只在用户选择的训练日安排训练，不得增加额外训练日
+- **器材限制**：动作选择必须符合用户可用的器材条件
+- **伤病史**：必须避免可能加重用户伤病的动作
+- **训练目标**：调整后的计划仍需服务于用户的主要训练目标
+
 ### 输出格式
 必须严格按照以下 JSON 格式输出，不要包含 markdown 代码块标记：
 
@@ -294,7 +302,8 @@ export const PLAN_UPDATE_PROMPT = `你现在需要执行"训练计划动态调�
 - completionScores 只包含有记录的天（跳过无记录的计划日）
 - updatedWeeks 必须包含完整的4周计划
 - 已过去的日期保持原样，只调整未来的训练
-- 调整要有理有据，基于运动科学原理`
+- 调整要有理有据，基于运动科学原理
+- **必须遵守用户问卷中的所有约束条件**`
 
 /**
  * 生成计划更新的用户提示词
@@ -304,6 +313,15 @@ export const generatePlanUpdatePrompt = (
   completionData: any,
   progress: { weekNumber: number; dayName: string; daysPassed: number }
 ) => {
+  // 获取用户问卷信息
+  const userProfile = currentPlan.userProfile || {}
+  const trainingDays = Array.isArray(userProfile.frequency) 
+    ? userProfile.frequency.join('、') 
+    : userProfile.frequency || '未指定'
+  const equipment = Array.isArray(userProfile.equipment) 
+    ? userProfile.equipment.join('、') 
+    : userProfile.equipment || '未指定'
+
   // 构建已完成日期的记录摘要
   const recordsSummary = completionData.completedDays.map((day: any) => ({
     weekNumber: day.weekNumber,
@@ -321,6 +339,16 @@ export const generatePlanUpdatePrompt = (
   }))
 
   return `
+### 用户需求问卷（必须遵守的约束条件）
+- **性别**：${userProfile.gender || '未指定'}
+- **年龄**：${userProfile.age || '未指定'}岁
+- **训练目标**：${userProfile.goal || '未指定'}
+- **运动水平**：${userProfile.level || '未指定'}
+- **训练日**：${trainingDays}（只能在这些日期安排训练！）
+- **可用器材**：${equipment}（动作必须符合器材条件！）
+- **伤病史/身体限制**：${userProfile.injuries || '无'}（必须避免相关动作！）
+- **其他需求**：${userProfile.additional || '无'}
+
 ### 当前训练计划
 \`\`\`json
 ${JSON.stringify(currentPlan.weeks, null, 2)}
@@ -344,6 +372,7 @@ ${JSON.stringify(recordsSummary, null, 2)}
 1. 评估每个有记录的计划日的完成度（0-100分）
 2. 分析用户的整体训练执行情况
 3. 调整剩余的训练计划，使其更适合用户的实际情况
+4. **确保调整后的计划仍然遵守用户问卷中的所有约束条件**
 `
 }
 

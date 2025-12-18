@@ -1,107 +1,171 @@
-# My Coach - AI 私教应用
+# MyCoach - AI 私人健身教练
 
-一个基于 AI 的个人健身教练应用，帮助你制定科学的训练计划并跟踪训练记录。
+基于 AI 的个人健身教练应用，为用户提供科学、个性化的训练计划和运动分析。
 
-## 技术栈
+## 架构概览
 
-- **React 18** - UI 框架
-- **Vite 5** - 构建工具
-- **TypeScript** - 类型安全
-- **React Router 6** - 路由管理
-- **Zustand** - 状态管理
-- **Sass** - 样式预处理
+```
+myCoach/
+├── frontend/                 # React 前端应用
+│   ├── src/
+│   │   ├── services/api/     # 后端 API 调用层
+│   │   ├── store/            # Zustand 状态管理
+│   │   ├── pages/            # 页面组件
+│   │   └── utils/            # 工具函数
+│   └── Dockerfile
+├── backend/                  # FastAPI 后端服务
+│   ├── app/
+│   │   ├── api/              # REST API 端点
+│   │   ├── services/ai/      # AI Provider Adapter
+│   │   ├── prompts/          # Prompt 模板
+│   │   ├── models/           # SQLAlchemy 数据模型
+│   │   └── core/             # 配置、日志、数据库
+│   └── Dockerfile
+├── docker-compose.yml        # Docker 一键部署
+└── env.example               # 环境变量示例
+```
 
 ## 功能特性
 
-- 🏋️ **AI 训练计划生成** - 根据你的个人情况生成 4 周训练计划
-- 📝 **训练记录** - 记录每次训练的数据
-- 🤖 **AI 运动分析** - 让 AI 教练点评你的训练
-- 📅 **日历导出** - 将训练计划导出为 ICS 文件
-- ⚙️ **灵活配置** - 支持多种 AI 模型提供商
+- **智能训练计划生成**：基于用户问卷，AI 生成个性化的 4 周周期化训练计划
+- **运动记录追踪**：记录每次训练，支持专业数据（间歇、配速等）
+- **AI 教练分析**：智能分析训练表现，提供专业建议
+- **计划动态调整**：基于训练记录，AI 自动调整后续计划
+- **自然语言对话**：通过对话方式灵活修改训练计划
+
+## 技术栈
+
+### 前端
+- React 18 + TypeScript
+- Vite 构建工具
+- Zustand 状态管理
+- SCSS 样式
+
+### 后端
+- Python FastAPI
+- SQLAlchemy (async)
+- PostgreSQL 数据库
+- AI Provider Adapter (支持 OpenAI, DeepSeek, Claude)
+
+### 部署
+- Docker + Docker Compose
+- Nginx 反向代理
 
 ## 快速开始
 
-### 安装依赖
+### 1. 克隆项目
 
 ```bash
-npm install
+git clone <repository-url>
+cd myCoach
 ```
 
-### 启动开发服务器
+### 2. 配置环境变量
 
 ```bash
+cp env.example .env
+# 编辑 .env 文件，填入你的 AI API Key
+```
+
+### 3. 使用 Docker Compose 启动
+
+```bash
+docker compose up -d
+```
+
+服务将在以下端口启动：
+- 前端：http://localhost:3000
+- 后端 API：http://localhost:8000
+- PostgreSQL：localhost:5432
+
+### 4. 访问应用
+
+打开浏览器访问 http://localhost:3000
+
+## 开发模式
+
+### 后端开发
+
+```bash
+cd backend
+pip install -r requirements.txt
+
+# 设置环境变量
+export DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mycoach
+export AI_API_KEY=your_api_key
+
+# 启动开发服务器
+uvicorn app.main:app --reload --port 8000
+```
+
+### 前端开发
+
+```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-应用将在 http://localhost:3000 启动
+前端开发服务器会自动代理 API 请求到后端。
 
-### 构建生产版本
+## API 端点
+
+### 训练计划
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | /api/plans/generate | 生成训练计划 |
+| GET | /api/plans | 获取计划列表 |
+| GET | /api/plans/{id} | 获取单个计划 |
+| PUT | /api/plans/{id} | 更新计划 |
+| DELETE | /api/plans/{id} | 删除计划 |
+| POST | /api/plans/{id}/chat | 对话调整计划 |
+| POST | /api/plans/{id}/update | 基于记录更新计划 |
+
+### 运动记录
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | /api/records | 创建记录 |
+| GET | /api/records | 获取记录列表 |
+| DELETE | /api/records/{id} | 删除记录 |
+| POST | /api/records/{id}/analyze | AI 分析记录 |
+
+## 安全性
+
+- **前端不接触敏感信息**：API Key、Prompt 模板等全部由后端管理
+- **日志脱敏**：后端日志不记录 API Key 和完整 Prompt 内容
+- **环境变量配置**：所有敏感配置通过环境变量注入
+- **数据库隔离**：PostgreSQL 仅内网访问
+
+## AI Provider 配置
+
+支持多种 AI 提供商，通过环境变量配置：
 
 ```bash
-npm run build
+# OpenAI (默认)
+AI_PROVIDER=openai
+AI_API_KEY=sk-xxx
+
+# DeepSeek
+AI_PROVIDER=deepseek
+AI_API_KEY=sk-xxx
+
+# Claude
+AI_PROVIDER=claude
+AI_API_KEY=sk-xxx
+
+# 自定义 OpenAI 兼容 API
+AI_PROVIDER=openai
+AI_BASE_URL=https://your-proxy.com/v1
+AI_MODEL=gpt-4o
+AI_API_KEY=your_key
 ```
 
-### 预览生产版本
+## 许可证
 
-```bash
-npm run preview
-```
+MIT License
 
-## 配置 AI 模型
+## 贡献
 
-应用支持以下 AI 模型提供商：
-
-1. **OpenAI** (GPT-4/3.5)
-2. **DeepSeek** (深度求索)
-3. **Anthropic** (Claude)
-4. **自定义 API** - 任何 OpenAI 兼容的 API
-
-在「设置」页面配置你的 API Key 和模型选项。
-
-### 关于 CORS
-
-由于浏览器端直接调用 AI API 可能遇到跨域问题，建议：
-
-1. 使用支持 CORS 的代理服务
-2. 部署自己的后端中转服务
-3. 使用本地代理工具（如开发时使用 Vite 代理）
-
-## 项目结构
-
-```
-src/
-├── App.tsx              # 应用入口，路由配置
-├── App.scss             # 应用容器样式
-├── main.tsx             # React 挂载入口
-├── app.scss             # 全局样式
-├── pages/
-│   ├── plan/            # 训练计划页面
-│   │   ├── index.tsx
-│   │   └── questionnaire/  # 问卷调查
-│   ├── record/          # 训练记录页面
-│   │   ├── index.tsx
-│   │   └── form/        # 记录表单
-│   └── settings/        # 设置页面
-├── store/               # Zustand 状态管理
-│   ├── usePlanStore.ts
-│   ├── useRecordStore.ts
-│   └── useSettingsStore.ts
-├── services/
-│   └── ai/              # AI 服务
-│       ├── client.ts    # API 客户端
-│       ├── index.ts     # 计划生成服务
-│       ├── prompts.ts   # 提示词模板
-│       └── types.ts     # 类型定义
-├── constants/           # 常量配置
-└── utils/               # 工具函数
-    ├── calendar.ts      # ICS 日历生成
-    └── ui.ts            # UI 交互工具
-```
-
-## 数据存储
-
-所有数据（训练计划、记录、设置）都保存在浏览器的 localStorage 中，不会上传到任何服务器。
-
-## License
-
-MIT
+欢迎提交 Issue 和 Pull Request！

@@ -1,0 +1,431 @@
+// ========================================
+// Questionnaire Page Styles - Strava-inspired
+// ========================================
+
+.questionnaire-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--spacing-2xl) * 2);
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+// ========================================
+// Progress Bar
+// ========================================
+.progress-bar {
+  height: 6px;
+  background: var(--color-gray-200);
+  position: relative;
+
+  .progress-fill {
+    height: 100%;
+    background: var(--color-primary-gradient);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 10px rgba(252, 76, 2, 0.3);
+  }
+}
+
+// ========================================
+// Question Container
+// ========================================
+.question-container {
+  flex: 1;
+  padding: var(--spacing-2xl);
+
+  .step-indicator {
+    display: inline-block;
+    font-size: 13px;
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+    padding: 6px 16px;
+    border-radius: var(--radius-full);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+  }
+
+  .question-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xl);
+    line-height: 1.4;
+    letter-spacing: -0.5px;
+  }
+}
+
+// ========================================
+// Options List
+// ========================================
+.options-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+
+  .option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    span {
+      font-size: 16px;
+      color: var(--color-text-primary);
+      font-weight: 500;
+    }
+
+    &:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+
+      span {
+        color: var(--color-primary);
+      }
+    }
+
+    &.selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+      box-shadow: 0 4px 16px rgba(252, 76, 2, 0.15);
+
+      span {
+        color: var(--color-primary);
+        font-weight: 600;
+      }
+    }
+
+    .check-mark {
+      color: var(--color-primary);
+      font-weight: bold;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--color-primary);
+      color: var(--color-white);
+      border-radius: 50%;
+      font-size: 14px;
+    }
+  }
+}
+
+// ========================================
+// Input Container
+// ========================================
+.input-container {
+  .text-input {
+    width: 100%;
+    min-height: 160px;
+    padding: 20px;
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    font-size: 16px;
+    resize: none;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+    line-height: 1.7;
+    background: var(--color-white);
+    color: var(--color-text-primary);
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px rgba(252, 76, 2, 0.1);
+    }
+
+    &:hover {
+      border-color: var(--color-gray-400);
+    }
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+  }
+}
+
+// ========================================
+// Confirm Step
+// ========================================
+.confirm-section {
+  .confirm-info {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .confirm-hint {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin: 0;
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid #3b82f6;
+  }
+}
+
+.date-picker-section {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-gray-50);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-gray-200);
+
+  .date-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .date-input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--color-white);
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(252, 76, 2, 0.1);
+    }
+
+    &:hover {
+      border-color: var(--color-primary-light);
+    }
+  }
+
+  .date-display {
+    display: block;
+    margin-top: var(--spacing-sm);
+    font-size: 15px;
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+}
+
+.summary-section {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-gray-200);
+  overflow: hidden;
+
+  .summary-title {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-gray-100);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+
+  .summary-items {
+    padding: var(--spacing-md);
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-md);
+
+    &:not(:last-child) {
+      border-bottom: 1px dashed var(--color-gray-200);
+    }
+
+    .item-label {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    .item-value {
+      font-size: 14px;
+      color: var(--color-text-primary);
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+    }
+  }
+}
+
+// ========================================
+// Actions
+// ========================================
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  background: var(--color-gray-50);
+  border-top: 1px solid var(--color-gray-200);
+
+  .btn {
+    flex: 1;
+    padding: 16px 32px;
+    border-radius: var(--radius-full);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    &.primary {
+      background: var(--color-primary-gradient);
+      color: var(--color-text-inverse);
+      border: none;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(252, 76, 2, 0.4);
+      }
+    }
+
+    &.secondary {
+      background: var(--color-white);
+      color: var(--color-text-secondary);
+      border: 2px solid var(--color-gray-300);
+
+      &:hover {
+        background: var(--color-gray-100);
+        border-color: var(--color-gray-400);
+        color: var(--color-text-primary);
+      }
+    }
+  }
+}
+
+// ========================================
+// Responsive - Tablet
+// ========================================
+@media (max-width: 1024px) {
+  .questionnaire-page {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+  }
+
+  .question-container {
+    padding: var(--spacing-xl);
+
+    .question-title {
+      font-size: 24px;
+    }
+  }
+
+  .options-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ========================================
+// Responsive - Mobile
+// ========================================
+@media (max-width: 768px) {
+  .questionnaire-page {
+    border-radius: 0;
+    box-shadow: none;
+    min-height: auto;
+  }
+
+  .progress-bar {
+    height: 4px;
+  }
+
+  .question-container {
+    padding: var(--spacing-lg);
+
+    .step-indicator {
+      font-size: 12px;
+      padding: 5px 12px;
+    }
+
+    .question-title {
+      font-size: 20px;
+      margin-bottom: var(--spacing-lg);
+    }
+  }
+
+  .options-list {
+    gap: var(--spacing-sm);
+
+    .option-item {
+      padding: 14px 18px;
+
+      span {
+        font-size: 15px;
+      }
+    }
+  }
+
+  .input-container {
+    .text-input {
+      min-height: 120px;
+      padding: 16px;
+      font-size: 15px;
+    }
+  }
+
+  .actions {
+    padding: var(--spacing-md);
+
+    .btn {
+      padding: 14px 24px;
+      font-size: 15px;
+    }
+  }
+
+  .confirm-section {
+    .confirm-hint {
+      font-size: 14px;
+      padding: var(--spacing-md);
+    }
+  }
+
+  .date-picker-section {
+    padding: var(--spacing-md);
+
+    .date-input {
+      padding: 12px 14px;
+      font-size: 15px;
+    }
+
+    .date-display {
+      font-size: 14px;
+    }
+  }
+
+  .summary-section {
+    .summary-title {
+      font-size: 14px;
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .summary-item {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+
+      .item-value {
+        text-align: left;
+      }
+    }
+  }
+}

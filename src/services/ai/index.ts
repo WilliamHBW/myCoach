@@ -208,6 +208,77 @@ export const modifyPlanWithChat = async (
   }
 }
 
+// 星期几对应的索引（周一为起点）
+const DAY_INDEX_MAP: Record<string, number> = {
+  '周一': 0, '周二': 1, '周三': 2, '周四': 3, '周五': 4, '周六': 5, '周日': 6
+}
+
+/**
+ * 判断某个计划日是否已经过去
+ */
+function isDayInPast(
+  weekNumber: number,
+  dayName: string,
+  currentWeekNumber: number,
+  currentDayName: string
+): boolean {
+  // 如果周数小于当前周，则已过去
+  if (weekNumber < currentWeekNumber) return true
+  // 如果周数大于当前周，则未过去
+  if (weekNumber > currentWeekNumber) return false
+  // 同一周，比较星期几
+  const dayIndex = DAY_INDEX_MAP[dayName] ?? 0
+  const currentDayIndex = DAY_INDEX_MAP[currentDayName] ?? 0
+  return dayIndex < currentDayIndex
+}
+
+/**
+ * 合并原计划和 AI 返回的计划，保留已过去的日期不变
+ */
+function mergeWeeksPreservingPast(
+  originalWeeks: TrainingWeek[],
+  updatedWeeks: TrainingWeek[],
+  startDate: string,
+  currentWeekNumber: number,
+  currentDayName: string
+): TrainingWeek[] {
+  return originalWeeks.map((originalWeek, weekIndex) => {
+    const updatedWeek = updatedWeeks[weekIndex]
+    
+    // 如果 AI 没有返回这一周的数据，保留原计划
+    if (!updatedWeek) return originalWeek
+    
+    // 合并每一天
+    const mergedDays = originalWeek.days.map((originalDay, dayIndex) => {
+      const updatedDay = updatedWeek.days?.find(d => d.day === originalDay.day)
+      
+      // 判断这一天是否已经过去
+      const isPast = isDayInPast(
+        originalWeek.weekNumber,
+        originalDay.day,
+        currentWeekNumber,
+        currentDayName
+      )
+      
+      // 如果已经过去，保留原计划；否则使用 AI 返回的更新
+      if (isPast) {
+        return originalDay
+      } else {
+        return updatedDay || originalDay
+      }
+    })
+    
+    return {
+      ...originalWeek,
+      // 如果整周都过去了，保留原 summary；否则使用 AI 返回的
+      summary: originalWeek.weekNumber < currentWeekNumber 
+        ? originalWeek.summary 
+        : (updatedWeek.summary || originalWeek.summary),
+      days: mergedDays
+    }
+  })
+}
+
 /**
  * 计划更新结果
  */
@@ -267,11 +338,20 @@ export const updatePlanWithRecords = async (
       throw new Error('AI 返回的数据结构不完整')
     }
 
+    // 保护已过去的日期不被修改：合并原计划和 AI 返回的计划
+    const mergedWeeks = mergeWeeksPreservingPast(
+      plan.weeks,
+      result.updatedWeeks,
+      plan.startDate,
+      progress.weekNumber,
+      progress.dayName
+    )
+
     return {
       completionScores: result.completionScores,
       overallAnalysis: result.overallAnalysis,
       adjustmentSummary: result.adjustmentSummary || '',
-      updatedWeeks: result.updatedWeeks
+      updatedWeeks: mergedWeeks
     }
 
   } catch (error) {

@@ -1,0 +1,60 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: mycoach-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mycoach
+      POSTGRES_USER: mycoach
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mycoach_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mycoach -d mycoach"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build: ./backend
+    container_name: mycoach-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mycoach:${DB_PASSWORD:-mycoach_secret}@db:5432/mycoach
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.7}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:80", "http://frontend:80"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # React Frontend
+  frontend:
+    build: ./frontend
+    container_name: mycoach-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
+
