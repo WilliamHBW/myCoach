@@ -9,6 +9,7 @@ myCoach/
 ├── frontend/                 # React 前端应用
 │   ├── src/
 │   │   ├── services/api/     # 后端 API 调用层
+│   │   ├── services/intervals/ # Intervals.icu 客户端
 │   │   ├── store/            # Zustand 状态管理
 │   │   ├── pages/            # 页面组件
 │   │   └── utils/            # 工具函数
@@ -21,6 +22,11 @@ myCoach/
 │   │   ├── models/           # SQLAlchemy 数据模型
 │   │   └── core/             # 配置、日志、数据库
 │   └── Dockerfile
+├── server/                   # Node.js Intervals 集成服务
+│   ├── routes/               # API 路由
+│   ├── services/             # 业务逻辑
+│   ├── db/                   # SQLite 数据库
+│   └── Dockerfile
 ├── docker-compose.yml        # Docker 一键部署
 └── env.example               # 环境变量示例
 ```
@@ -32,6 +38,7 @@ myCoach/
 - **AI 教练分析**：智能分析训练表现，提供专业建议
 - **计划动态调整**：基于训练记录，AI 自动调整后续计划
 - **自然语言对话**：通过对话方式灵活修改训练计划
+- **Intervals.icu 同步**：自动从 Intervals.icu 导入骑行、跑步、游泳等运动数据
 
 ## 技术栈
 
@@ -76,7 +83,8 @@ docker compose up -d
 服务将在以下端口启动：
 - 前端：http://localhost:3000
 - 后端 API：http://localhost:8000
-- PostgreSQL：localhost:5432
+- Intervals 集成服务：http://localhost:3001
+- PostgreSQL：localhost:5433
 
 ### 4. 访问应用
 
@@ -161,6 +169,84 @@ AI_BASE_URL=https://your-proxy.com/v1
 AI_MODEL=gpt-4o
 AI_API_KEY=your_key
 ```
+
+## Intervals.icu 数据同步配置
+
+MyCoach 支持从 [Intervals.icu](https://intervals.icu) 自动同步运动数据。Intervals.icu 是一个强大的训练分析平台，可以从 Garmin、Strava、Wahoo 等设备/平台自动导入数据。
+
+### 获取 Intervals.icu API Key
+
+1. 登录 [Intervals.icu](https://intervals.icu)
+2. 进入 **Settings** → **Developer Settings**
+3. 点击 **Create API Key** 生成一个新的 API Key
+4. 复制生成的 API Key（格式类似 `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）
+
+### 方式一：通过 Web UI 配置（推荐）
+
+1. 访问 MyCoach 应用：http://localhost:3000
+2. 进入 **设置** 页面
+3. 在 **Intervals.icu 数据同步** 区域填写：
+   - **API Key**：粘贴你的 Intervals.icu API Key
+   - **Athlete ID**（可选）：留空则自动获取
+   - **Webhook Secret**（可选）：用于实时同步验证
+4. 点击 **连接 Intervals.icu** 按钮
+5. 连接成功后，可以选择同步天数并点击 **立即同步**
+
+### 方式二：通过环境变量配置
+
+在 `.env` 文件中添加：
+
+```bash
+# Intervals.icu 配置
+INTERVALS_API_KEY=your_intervals_api_key
+INTERVALS_ATHLETE_ID=i12345    # 可选，留空则自动获取
+INTERVALS_WEBHOOK_SECRET=your_secret   # 可选，用于实时同步
+```
+
+### 配置实时同步（Webhook）
+
+如果希望在 Intervals.icu 上有新活动时自动同步到 MyCoach：
+
+1. 在 Intervals.icu 进入 **Settings** → **Developer Settings**
+2. 在 **Webhooks** 区域添加新的 Webhook：
+   - **URL**: `https://your-domain.com/webhook/intervals`
+   - **Secret**: 自定义一个密钥字符串
+3. 在 MyCoach 中配置相同的 Webhook Secret
+
+> **注意**：Webhook 需要公网可访问的 URL。本地开发时可使用 ngrok 等工具。
+
+### 支持的运动类型
+
+从 Intervals.icu 同步的运动将自动映射到 MyCoach 的运动类型：
+
+| Intervals.icu | MyCoach |
+|---------------|---------|
+| Ride, VirtualRide | 骑行 |
+| Run, VirtualRun | 跑步 |
+| Swim | 游泳 |
+| WeightTraining, Workout | 力量训练 |
+| Yoga | 瑜伽 |
+| HIIT | HIIT |
+| 其他 | 其他 |
+
+### Intervals API 端点
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | /api/intervals/config | 获取配置状态 |
+| PUT | /api/intervals/config | 保存配置 |
+| DELETE | /api/intervals/config | 断开连接 |
+| POST | /api/intervals/test | 测试连接 |
+| POST | /api/intervals/sync | 手动同步活动 |
+| GET | /api/intervals/records | 获取已同步记录 |
+| POST | /webhook/intervals | Webhook 接收端点 |
+
+### 安全说明
+
+- **API Key 仅存储在服务器端**：不会暴露给前端浏览器
+- **Webhook 验证**：支持 Secret 验证，防止伪造请求
+- **日志脱敏**：API Key 不会出现在日志中
+- **HTTPS**：生产环境建议配置 SSL/TLS
 
 ## 许可证
 

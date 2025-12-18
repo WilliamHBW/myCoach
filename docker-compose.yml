@@ -32,7 +32,7 @@ services:
       AI_TEMPERATURE: ${AI_TEMPERATURE:-0.7}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
-      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:80", "http://frontend:80"]'
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:80", "http://frontend:80", "http://intervals-server:3001"]'
     ports:
       - "8000:8000"
     depends_on:
@@ -40,6 +40,34 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Intervals.icu Integration Server (Node.js)
+  intervals-server:
+    build: ./server
+    container_name: mycoach-intervals-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      BACKEND_URL: http://backend:8000/api
+      # Optional: Pre-configure Intervals.icu credentials
+      # These can also be set via the web UI
+      INTERVALS_API_KEY: ${INTERVALS_API_KEY:-}
+      INTERVALS_ATHLETE_ID: ${INTERVALS_ATHLETE_ID:-}
+      INTERVALS_WEBHOOK_SECRET: ${INTERVALS_WEBHOOK_SECRET:-}
+    volumes:
+      # Persist SQLite database for settings and sync records
+      - intervals_data:/app/data
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,8 +81,10 @@ services:
       - "3000:80"
     depends_on:
       - backend
+      - intervals-server
 
 volumes:
   postgres_data:
     driver: local
-
+  intervals_data:
+    driver: local
