@@ -204,6 +204,110 @@
     }
   }
 
+  // ========================================
+  // Strava Integration Section
+  // ========================================
+  .strava-section {
+    border-color: #FC4C02;
+    background: linear-gradient(135deg, #FFF5F0 0%, var(--color-white) 100%);
+
+    .connected-status {
+      .status-badge.strava-connected {
+        background: #FFF0E8;
+        color: #D94300;
+
+        .status-dot {
+          background: #FC4C02;
+        }
+      }
+    }
+
+    .sync-controls {
+      .strava-sync-btn {
+        background: #FC4C02;
+
+        &:hover:not(:disabled) {
+          background: #D94300;
+        }
+      }
+    }
+
+    .connect-form {
+      .config-status {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md);
+        background: #E8F5E9;
+        border-radius: var(--radius-md);
+        color: #2E7D32;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: var(--spacing-md);
+
+        .config-icon {
+          font-size: 16px;
+        }
+      }
+
+      .strava-connect-btn {
+        background: linear-gradient(135deg, #FC4C02 0%, #D94300 100%);
+
+        &:hover:not(:disabled) {
+          box-shadow: 0 8px 24px rgba(252, 76, 2, 0.4);
+        }
+      }
+
+      .reset-config-btn {
+        width: 100%;
+        margin-top: var(--spacing-sm);
+        padding: 10px 20px;
+        background: transparent;
+        color: var(--color-text-muted);
+        border: 1px solid var(--color-gray-300);
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+
+        &:hover:not(:disabled) {
+          color: var(--color-text-secondary);
+          border-color: var(--color-gray-400);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+
+      .hint a {
+        color: #FC4C02;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  .strava-info {
+    background: linear-gradient(135deg, #FFF0E8 0%, #FFFAF7 100%);
+    border-color: #FFB088;
+
+    .info-content {
+      .info-title {
+        color: #D94300;
+      }
+
+      .info-text {
+        color: #B84300;
+      }
+    }
+  }
+
   @keyframes pulse {
     0% {
       box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);

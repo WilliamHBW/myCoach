@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '../../store/useSettingsStore'
 import { useIntervalsStore } from '../../store/useIntervalsStore'
+import { useStravaStore } from '../../store/useStravaStore'
 import './index.scss'
 
 /**
@@ -9,6 +10,7 @@ import './index.scss'
  * Includes:
  * - Theme settings
  * - Intervals.icu integration settings
+ * - Strava integration settings
  */
 
 // Simple toast function (inline to avoid dependency)
@@ -57,16 +59,47 @@ export default function Settings() {
     clearError
   } = useIntervalsStore()
 
+  // Strava state
+  const {
+    config: stravaConfig,
+    isLoading: stravaLoading,
+    isSyncing: stravaSyncing,
+    isConnected: stravaConnected,
+    athleteInfo: stravaAthleteInfo,
+    error: stravaError,
+    fetchConfig: fetchStravaConfig,
+    saveConfig: saveStravaConfig,
+    startOAuth: startStravaOAuth,
+    disconnect: disconnectStrava,
+    syncActivities: syncStravaActivities,
+    clearError: clearStravaError,
+    handleOAuthCallback
+  } = useStravaStore()
+
   // Local state for Intervals.icu form
   const [intervalsApiKey, setIntervalsApiKey] = useState('')
   const [intervalsAthleteId, setIntervalsAthleteId] = useState('')
   const [intervalsWebhookSecret, setIntervalsWebhookSecret] = useState('')
   const [syncDays, setSyncDays] = useState(30)
 
-  // Load Intervals config on mount
+  // Local state for Strava form
+  const [stravaClientId, setStravaClientId] = useState('')
+  const [stravaClientSecret, setStravaClientSecret] = useState('')
+  const [stravaSyncDays, setStravaSyncDays] = useState(30)
+
+  // Load configs on mount
   useEffect(() => {
     fetchConfig()
-  }, [fetchConfig])
+    fetchStravaConfig()
+  }, [fetchConfig, fetchStravaConfig])
+
+  // Handle Strava OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('strava_connected') || params.has('strava_error')) {
+      handleOAuthCallback(params)
+    }
+  }, [handleOAuthCallback])
 
   // Update local state when config is loaded
   useEffect(() => {
@@ -82,6 +115,59 @@ export default function Settings() {
       clearError()
     }
   }, [intervalsError, clearError])
+
+  // Clear Strava error after showing toast
+  useEffect(() => {
+    if (stravaError) {
+      showToast(stravaError, 'error')
+      clearStravaError()
+    }
+  }, [stravaError, clearStravaError])
+
+  // Strava handlers
+  const handleStravaSaveConfig = async () => {
+    if (!stravaClientId || !stravaClientSecret) {
+      showToast('请输入 Strava Client ID 和 Client Secret', 'error')
+      return
+    }
+
+    const saved = await saveStravaConfig(stravaClientId, stravaClientSecret)
+    if (saved) {
+      showToast('Strava 配置已保存', 'success')
+      setStravaClientId('')
+      setStravaClientSecret('')
+    }
+  }
+
+  const handleStravaConnect = async () => {
+    // Check if config is saved first
+    if (!stravaConfig?.clientId) {
+      showToast('请先保存 Strava 应用配置', 'error')
+      return
+    }
+    await startStravaOAuth()
+  }
+
+  const handleStravaDisconnect = async () => {
+    await disconnectStrava()
+    showToast('已断开 Strava 连接', 'success')
+  }
+
+  const handleStravaSync = async () => {
+    const now = new Date()
+    const oldest = new Date(now.getTime() - stravaSyncDays * 24 * 60 * 60 * 1000)
+    
+    const result = await syncStravaActivities(
+      oldest.toISOString().split('T')[0],
+      now.toISOString().split('T')[0]
+    )
+    
+    if (result.success) {
+      showToast(`同步完成: ${result.synced} 条活动，创建 ${result.created || 0} 条记录`, 'success')
+    } else {
+      showToast(result.message || '同步失败', 'error')
+    }
+  }
 
   // Intervals.icu handlers
   const handleIntervalsConnect = async () => {
@@ -258,6 +344,137 @@ export default function Settings() {
           <p className='info-text'>
             Intervals.icu 是一个强大的训练分析平台，支持从 Garmin、Strava 等平台自动导入数据。
             连接后，您的骑行、跑步、游泳等运动数据将自动同步到 myCoach，便于 AI 教练分析您的训练状态。
+          </p>
+        </div>
+      </div>
+
+      {/* Strava Integration Section */}
+      <div className='section strava-section'>
+        <h3 className='section-title'>🏃 Strava 数据同步</h3>
+        
+        {stravaConnected ? (
+          <div className='connected-status'>
+            <div className='status-badge connected strava-connected'>
+              <span className='status-dot'></span>
+              已连接
+            </div>
+            {stravaAthleteInfo && (
+              <div className='athlete-info'>
+                <span className='athlete-name'>{stravaAthleteInfo.name}</span>
+              </div>
+            )}
+            
+            <div className='sync-controls'>
+              <div className='sync-days-input'>
+                <label>同步天数:</label>
+                <select 
+                  value={stravaSyncDays} 
+                  onChange={(e) => setStravaSyncDays(Number(e.target.value))}
+                  className='select-input small'
+                >
+                  <option value={7}>最近 7 天</option>
+                  <option value={14}>最近 14 天</option>
+                  <option value={30}>最近 30 天</option>
+                  <option value={60}>最近 60 天</option>
+                  <option value={90}>最近 90 天</option>
+                </select>
+              </div>
+              
+              <button 
+                className='sync-btn strava-sync-btn'
+                onClick={handleStravaSync}
+                disabled={stravaSyncing}
+              >
+                {stravaSyncing ? '同步中...' : '立即同步'}
+              </button>
+            </div>
+            
+            <button 
+              className='disconnect-btn'
+              onClick={handleStravaDisconnect}
+              disabled={stravaLoading}
+            >
+              断开连接
+            </button>
+          </div>
+        ) : (
+          <div className='connect-form'>
+            <p className='hint' style={{ marginTop: 0, marginBottom: 'var(--spacing-md)' }}>
+              连接 Strava 账号后，您的运动数据将自动同步到 myCoach。
+            </p>
+
+            {!stravaConfig?.clientId ? (
+              <>
+                <div className='form-group'>
+                  <label className='form-label'>Client ID *</label>
+                  <input
+                    className='input'
+                    type='text'
+                    placeholder='在 Strava API 设置页获取'
+                    value={stravaClientId}
+                    onChange={(e) => setStravaClientId(e.target.value)}
+                  />
+                </div>
+                
+                <div className='form-group'>
+                  <label className='form-label'>Client Secret *</label>
+                  <input
+                    className='input'
+                    type='password'
+                    placeholder='在 Strava API 设置页获取'
+                    value={stravaClientSecret}
+                    onChange={(e) => setStravaClientSecret(e.target.value)}
+                  />
+                  <p className='hint'>
+                    访问 <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer">
+                      Strava API 设置页
+                    </a> 创建应用并获取凭据。回调域名请填写: localhost
+                  </p>
+                </div>
+                
+                <button 
+                  className='connect-btn strava-connect-btn'
+                  onClick={handleStravaSaveConfig}
+                  disabled={stravaLoading || !stravaClientId || !stravaClientSecret}
+                >
+                  {stravaLoading ? '保存中...' : '保存配置'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className='config-status'>
+                  <span className='config-icon'>✓</span>
+                  <span>Strava 应用配置已保存</span>
+                </div>
+                
+                <button 
+                  className='connect-btn strava-connect-btn'
+                  onClick={handleStravaConnect}
+                  disabled={stravaLoading}
+                >
+                  {stravaLoading ? '跳转中...' : '授权连接 Strava'}
+                </button>
+                
+                <button 
+                  className='reset-config-btn'
+                  onClick={handleStravaDisconnect}
+                  disabled={stravaLoading}
+                >
+                  重新配置
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className='info-card strava-info'>
+        <span className='info-icon'>🔸</span>
+        <div className='info-content'>
+          <p className='info-title'>关于 Strava 同步</p>
+          <p className='info-text'>
+            Strava 是全球最大的运动社交平台。连接后，您的跑步、骑行、游泳等活动数据将直接同步到 myCoach。
+            需要先在 Strava 创建开发者应用，获取 Client ID 和 Secret。
           </p>
         </div>
       </div>

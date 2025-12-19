@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import intervalsRoutes from './routes/intervals.js'
+import stravaRoutes from './routes/strava.js'
 import webhookRoutes from './routes/webhook.js'
 import { getSetting, setSetting } from './db/index.js'
 
@@ -77,6 +78,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/intervals', intervalsRoutes)
+app.use('/api/strava', stravaRoutes)
 app.use('/webhook', webhookRoutes)
 
 // Health check
@@ -101,7 +103,7 @@ initializeConfig()
 
 app.listen(PORT, () => {
   console.log(`[Server] Running on http://localhost:${PORT}`)
-  console.log(`[Server] API endpoints: /api/intervals/*`)
+  console.log(`[Server] API endpoints: /api/intervals/*, /api/strava/*`)
   console.log(`[Server] Webhook endpoint: /webhook/intervals`)
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`)
 })
