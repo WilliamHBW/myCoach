@@ -132,6 +132,10 @@ body {
   &.toast-error {
     background: var(--color-error);
   }
+
+  &.toast-warning {
+    background: #f59e0b;
+  }
 }
 
 // ========================================

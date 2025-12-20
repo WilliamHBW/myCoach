@@ -42,6 +42,11 @@ class AnalyzeRecordRequest(BaseModel):
     pass  # No additional fields needed
 
 
+class UpdateRecordRequest(BaseModel):
+    """Request to update a workout record."""
+    data: dict[str, Any] = Field(..., description="Updated workout data")
+
+
 # ========================================
 # API Endpoints
 # ========================================
@@ -122,6 +127,39 @@ async def get_record(
     
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
+    
+    return RecordResponse(
+        id=str(record.id),
+        createdAt=int(record.created_at.timestamp() * 1000),
+        planId=str(record.plan_id) if record.plan_id else None,
+        data=record.data,
+        analysis=record.analysis,
+    )
+
+
+@router.put("/{record_id}", response_model=RecordResponse)
+async def update_record(
+    record_id: UUID,
+    request: UpdateRecordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a workout record.
+    """
+    result = await db.execute(
+        select(WorkoutRecord).where(WorkoutRecord.id == record_id)
+    )
+    record = result.scalar_one_or_none()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    
+    # Update the record data
+    record.data = request.data
+    await db.flush()
+    await db.refresh(record)
+    
+    logger.info("Record updated", record_id=str(record_id))
     
     return RecordResponse(
         id=str(record.id),

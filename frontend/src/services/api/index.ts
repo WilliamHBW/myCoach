@@ -219,6 +219,13 @@ export const recordApi = {
   },
 
   /**
+   * Update a workout record
+   */
+  update: async (id: string, data: Record<string, any>): Promise<WorkoutRecord> => {
+    return put<WorkoutRecord>(`/records/${id}`, { data })
+  },
+
+  /**
    * Delete a workout record
    */
   delete: async (id: string): Promise<void> => {

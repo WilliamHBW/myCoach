@@ -1,5 +1,5 @@
 // Toast 提示
-export const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+export const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
   const toast = document.createElement('div')
   toast.className = `custom-toast toast-${type}`
   toast.textContent = message

@@ -23,13 +23,14 @@ interface StravaState {
   // Actions
   fetchConfig: () => Promise<void>
   saveConfig: (clientId: string, clientSecret: string) => Promise<boolean>
+  getAuthUrl: () => Promise<string | null>
   startOAuth: () => Promise<void>
+  handleOAuthCallback: (params: URLSearchParams) => void
   testConnection: () => Promise<TestConnectionResult>
   disconnect: () => Promise<void>
   syncActivities: (oldest?: string, newest?: string) => Promise<SyncResult>
   fetchSyncedRecords: () => Promise<void>
   clearError: () => void
-  handleOAuthCallback: (params: URLSearchParams) => void
 }
 
 export const useStravaStore = create<StravaState>((set, get) => ({
@@ -65,7 +66,7 @@ export const useStravaStore = create<StravaState>((set, get) => ({
     }
   },
   
-  // Save client configuration
+  // Save configuration
   saveConfig: async (clientId: string, clientSecret: string) => {
     set({ isLoading: true, error: null })
     try {
@@ -86,19 +87,48 @@ export const useStravaStore = create<StravaState>((set, get) => ({
       return false
     }
   },
-  
-  // Start OAuth flow
+
+  // Get OAuth authorization URL
+  getAuthUrl: async () => {
+    try {
+      const result = await stravaClient.getAuthUrl()
+      return result.url
+    } catch (error: any) {
+      set({ error: error.message || '获取授权链接失败' })
+      return null
+    }
+  },
+
+  // Start OAuth flow by redirecting to Strava
   startOAuth: async () => {
     set({ isLoading: true, error: null })
     try {
-      const { url } = await stravaClient.getAuthUrl()
-      // Redirect to Strava authorization page
-      window.location.href = url
+      const result = await stravaClient.getAuthUrl()
+      if (result.url) {
+        window.location.href = result.url
+      }
     } catch (error: any) {
       set({ 
-        error: error.message || '获取授权链接失败', 
+        error: error.message || '无法启动 Strava 授权', 
         isLoading: false 
       })
+    }
+  },
+
+  // Handle OAuth callback from Strava
+  handleOAuthCallback: (params: URLSearchParams) => {
+    const stravaConnected = params.get('strava_connected')
+    const stravaError = params.get('strava_error')
+
+    // Clean up URL
+    const newUrl = window.location.pathname + window.location.hash
+    window.history.replaceState({}, '', newUrl)
+
+    if (stravaConnected === 'true') {
+      // Refresh config to get connected state
+      get().fetchConfig()
+    } else if (stravaError) {
+      set({ error: decodeURIComponent(stravaError) })
     }
   },
   
@@ -120,8 +150,6 @@ export const useStravaStore = create<StravaState>((set, get) => ({
         })
       } else {
         set({ 
-          isConnected: false,
-          athleteInfo: null,
           error: result.message || '连接测试失败',
           isLoading: false 
         })
@@ -131,8 +159,6 @@ export const useStravaStore = create<StravaState>((set, get) => ({
     } catch (error: any) {
       const errorMsg = error.message || '连接测试失败'
       set({ 
-        isConnected: false,
-        athleteInfo: null,
         error: errorMsg,
         isLoading: false 
       })
@@ -212,27 +238,5 @@ export const useStravaStore = create<StravaState>((set, get) => ({
   // Clear error message
   clearError: () => {
     set({ error: null })
-  },
-
-  // Handle OAuth callback parameters
-  handleOAuthCallback: (params: URLSearchParams) => {
-    const connected = params.get('strava_connected')
-    const error = params.get('strava_error')
-
-    if (connected === 'true') {
-      // Refresh config to get new connection status
-      get().fetchConfig()
-    }
-
-    if (error) {
-      set({ error: decodeURIComponent(error) })
-    }
-
-    // Clean up URL parameters
-    const url = new URL(window.location.href)
-    url.searchParams.delete('strava_connected')
-    url.searchParams.delete('strava_error')
-    window.history.replaceState({}, '', url.toString())
   }
 }))
-

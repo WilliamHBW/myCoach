@@ -12,6 +12,7 @@ interface RecordState {
   // API Actions
   fetchRecords: () => Promise<WorkoutRecord[]>
   addRecord: (data: Record<string, any>, planId?: string) => Promise<WorkoutRecord>
+  updateRecord: (id: string, data: Record<string, any>) => Promise<WorkoutRecord>
   deleteRecord: (id: string) => Promise<void>
   analyzeRecord: (id: string) => Promise<WorkoutRecord>
 }
@@ -46,6 +47,21 @@ export const useRecordStore = create<RecordState>((set, get) => ({
         records: [record, ...state.records]
       }))
       return record
+    } catch (error: any) {
+      set({ error: error.message })
+      throw error
+    }
+  },
+
+  updateRecord: async (id: string, data: Record<string, any>) => {
+    try {
+      const updatedRecord = await recordApi.update(id, data)
+      set((state) => ({
+        records: state.records.map(r => 
+          r.id === id ? updatedRecord : r
+        )
+      }))
+      return updatedRecord
     } catch (error: any) {
       set({ error: error.message })
       throw error

@@ -29,29 +29,9 @@ export interface SyncResult {
   error?: string
 }
 
-export interface StravaActivity {
-  id: number
-  name: string
-  type: string
-  sport_type: string
-  start_date_local: string
-  distance: number
-  moving_time: number
-  elapsed_time: number
-  total_elevation_gain: number
-  average_speed?: number
-  max_speed?: number
-  average_heartrate?: number
-  max_heartrate?: number
-  average_watts?: number
-  calories?: number
-  suffer_score?: number
-  [key: string]: any
-}
-
 export interface StravaSyncedRecord {
   id: string
-  strava_data: StravaActivity
+  strava_data: any
   local_record_id: string | null
   synced_at: number
   start_date: string
@@ -173,7 +153,19 @@ class StravaClient {
     }
     return response.json()
   }
+
+  /**
+   * Reset synced records (clear local_record_ids)
+   */
+  async reset(): Promise<{ success: boolean; cleared: number; message: string }> {
+    const response = await fetch(`${API_BASE}/reset`, {
+      method: 'POST'
+    })
+    if (!response.ok) {
+      throw new Error('Failed to reset')
+    }
+    return response.json()
+  }
 }
 
 export const stravaClient = new StravaClient()
-
