@@ -1,4 +1,4 @@
-export type QuestionType = 'single' | 'multiple' | 'text'
+export type QuestionType = 'single' | 'multiple' | 'text' | 'multipleWithDuration'
 
 export interface Question {
   id: string
@@ -6,6 +6,7 @@ export interface Question {
   title: string
   options?: string[]
   placeholder?: string
+  defaultDuration?: number  // 默认训练时长（分钟）
 }
 
 export const TRAINING_QUESTIONS: Question[] = [
@@ -20,6 +21,24 @@ export const TRAINING_QUESTIONS: Question[] = [
     type: 'text',
     title: '您的年龄是？',
     placeholder: '请输入年龄（例如：25）'
+  }, 
+  {
+    id: 'height',
+    type: 'text',
+    title: '您的身高是？',
+    placeholder: '请输入身高（例如：170）'
+  },
+  {
+    id: 'weight',
+    type: 'text',
+    title: '您的体重是？',
+    placeholder: '请输入体重（例如：60）'
+  },
+  {
+    id: 'item',
+    type: 'multiple',
+    title: '您希望进行的训练项目是？',
+    options: ['跑步', '骑行', '游泳', '铁人三项', '力量训练']
   },
   {
     id: 'goal',
@@ -35,9 +54,10 @@ export const TRAINING_QUESTIONS: Question[] = [
   },
   {
     id: 'frequency',
-    type: 'multiple',
+    type: 'multipleWithDuration',
     title: '您计划在每周哪几天训练？',
-    options: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    options: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    defaultDuration: 30  // 默认30分钟
   },
   {
     id: 'equipment',

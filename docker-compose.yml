@@ -33,6 +33,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       CORS_ORIGINS: '["http://localhost:3000", "http://localhost:80", "http://frontend:80", "http://intervals-server:3001"]'
+      INTERVALS_SERVER_URL: http://intervals-server:3001
     ports:
       - "8000:8000"
     depends_on:

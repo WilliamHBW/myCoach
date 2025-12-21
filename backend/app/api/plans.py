@@ -55,6 +55,8 @@ class PlanResponse(BaseModel):
     createdAt: int
     startDate: str
     userProfile: dict[str, Any]
+    macroPlan: dict[str, Any] | None = None
+    totalWeeks: int = 4
     weeks: list[dict[str, Any]]
 
 
@@ -92,6 +94,8 @@ async def generate_plan(
         db_plan = TrainingPlan(
             start_date=start_date,
             user_profile=request.userProfile,
+            macro_plan=plan_data["macroPlan"],
+            total_weeks=plan_data["totalWeeks"],
             weeks=plan_data["weeks"],
         )
         db.add(db_plan)
@@ -105,6 +109,8 @@ async def generate_plan(
             createdAt=int(db_plan.created_at.timestamp() * 1000),
             startDate=db_plan.start_date.isoformat(),
             userProfile=db_plan.user_profile,
+            macroPlan=db_plan.macro_plan,
+            totalWeeks=db_plan.total_weeks,
             weeks=db_plan.weeks,
         )
         
@@ -134,6 +140,8 @@ async def list_plans(
             createdAt=int(plan.created_at.timestamp() * 1000),
             startDate=plan.start_date.isoformat(),
             userProfile=plan.user_profile,
+            macroPlan=plan.macro_plan,
+            totalWeeks=plan.total_weeks,
             weeks=plan.weeks,
         )
         for plan in plans
@@ -161,6 +169,8 @@ async def get_plan(
         createdAt=int(plan.created_at.timestamp() * 1000),
         startDate=plan.start_date.isoformat(),
         userProfile=plan.user_profile,
+        macroPlan=plan.macro_plan,
+        totalWeeks=plan.total_weeks,
         weeks=plan.weeks,
     )
 
@@ -194,6 +204,8 @@ async def update_plan(
         createdAt=int(plan.created_at.timestamp() * 1000),
         startDate=plan.start_date.isoformat(),
         userProfile=plan.user_profile,
+        macroPlan=plan.macro_plan,
+        totalWeeks=plan.total_weeks,
         weeks=plan.weeks,
     )
 
@@ -267,6 +279,62 @@ async def chat_modify_plan(
     except Exception as e:
         logger.error("Chat modify error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{plan_id}/next-cycle", response_model=PlanResponse)
+async def generate_next_cycle_api(
+    plan_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate the next cycle of detailed training content.
+    """
+    result = await db.execute(
+        select(TrainingPlan).where(TrainingPlan.id == plan_id)
+    )
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+        
+    if not plan.macro_plan:
+        raise HTTPException(status_code=400, detail="该计划没有宏观大纲，无法生成下一阶段内容")
+        
+    current_weeks_count = len(plan.weeks)
+    if current_weeks_count >= plan.total_weeks:
+        raise HTTPException(status_code=400, detail="计划已全部细化完成")
+        
+    try:
+        ai_service = AIService()
+        next_weeks = await ai_service.generate_next_cycle(
+            user_profile=plan.user_profile,
+            macro_plan=plan.macro_plan,
+            current_weeks_count=current_weeks_count
+        )
+        
+        # Append next weeks to current weeks
+        updated_weeks = list(plan.weeks)
+        updated_weeks.extend(next_weeks)
+        
+        plan.weeks = updated_weeks
+        plan.updated_at = datetime.utcnow()
+        await db.flush()
+        await db.refresh(plan)
+        
+        logger.info("Next cycle generated", plan_id=str(plan_id))
+        
+        return PlanResponse(
+            id=str(plan.id),
+            createdAt=int(plan.created_at.timestamp() * 1000),
+            startDate=plan.start_date.isoformat(),
+            userProfile=plan.user_profile,
+            macroPlan=plan.macro_plan,
+            totalWeeks=plan.total_weeks,
+            weeks=plan.weeks,
+        )
+    except Exception as e:
+        logger.error("Next cycle generation error", error=str(e))
+        raise HTTPException(status_code=500, detail=f"生成下一阶段失败: {str(e)}")
 
 
 @router.post("/{plan_id}/update", response_model=dict)

@@ -156,6 +156,19 @@ class IntervalsClient {
     }
     return response.json()
   }
+
+  /**
+   * Reset synced records (clear local_record_ids)
+   */
+  async reset(): Promise<{ success: boolean; cleared: number; message: string }> {
+    const response = await fetch(`${API_BASE}/reset`, {
+      method: 'POST'
+    })
+    if (!response.ok) {
+      throw new Error('Failed to reset')
+    }
+    return response.json()
+  }
 }
 
 export const intervalsClient = new IntervalsClient()

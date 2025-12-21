@@ -8,7 +8,8 @@ from typing import Any
 from app.services.ai.adapter import get_ai_adapter, ChatMessage, AIResponse
 from app.prompts import (
     SYSTEM_PROMPT,
-    PLAN_GENERATION_PROMPT,
+    MACRO_PLAN_PROMPT,
+    CYCLE_DETAIL_PROMPT,
     PERFORMANCE_ANALYSIS_PROMPT,
     PLAN_MODIFICATION_PROMPT,
     PLAN_UPDATE_PROMPT,
@@ -24,15 +25,27 @@ logger = get_logger(__name__)
 
 
 def clean_json_string(text: str) -> str:
-    """Remove markdown code block markers from JSON string."""
-    cleaned = text.strip()
-    if cleaned.startswith("```json"):
-        cleaned = re.sub(r"^```json\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$", "", cleaned)
-    elif cleaned.startswith("```"):
-        cleaned = re.sub(r"^```\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$", "", cleaned)
-    return cleaned
+    """Extract JSON from text, handling markdown blocks and extra text."""
+    # Try to find JSON block in markdown
+    json_match = re.search(r"```json\s*([\s\S]*?)\s*```", text)
+    if json_match:
+        return json_match.group(1).strip()
+    
+    # Try to find any markdown code block
+    code_match = re.search(r"```\s*([\s\S]*?)\s*```", text)
+    if code_match:
+        return code_match.group(1).strip()
+    
+    # Try to find the first '{' and last '}'
+    # This regex is more robust for finding the outermost JSON object
+    bracket_match = re.search(r"(\{[\s\S]*\})", text)
+    if bracket_match:
+        content = bracket_match.group(1).strip()
+        # Count braces to ensure we have a balanced JSON object if possible
+        # This is a simple check, not a full JSON parser
+        return content
+        
+    return text.strip()
 
 
 class AIService:
@@ -41,18 +54,11 @@ class AIService:
     def __init__(self):
         self.adapter = get_ai_adapter()
     
-    async def generate_training_plan(self, user_profile: dict[str, Any]) -> dict[str, Any]:
+    async def generate_macro_plan(self, user_profile: dict[str, Any]) -> dict[str, Any]:
         """
-        Generate a 4-week training plan based on user profile.
-        
-        Args:
-            user_profile: User questionnaire answers
-            
-        Returns:
-            Training plan with weeks array
+        Generate a long-term macro outline for the training plan.
         """
-        # Combine system prompt with plan generation instructions
-        system_prompt = f"{SYSTEM_PROMPT}\n\n{PLAN_GENERATION_PROMPT}"
+        system_prompt = f"{SYSTEM_PROMPT}\n\n{MACRO_PLAN_PROMPT}"
         user_prompt = generate_user_prompt(user_profile)
         
         messages = [
@@ -65,19 +71,93 @@ class AIService:
             temperature=settings.AI_TEMPERATURE,
         )
         
-        # Parse JSON response
         cleaned_content = clean_json_string(response.content)
         try:
-            plan_data = json.loads(cleaned_content)
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse plan JSON", error=str(e))
-            raise ValueError("生成的数据格式有误，请重试")
+            macro_data = json.loads(cleaned_content)
+            if "macroWeeks" not in macro_data:
+                logger.error("Macro plan missing macroWeeks", content=cleaned_content[:500])
+                raise ValueError("宏观计划格式不正确")
+            return macro_data
+        except Exception as e:
+            logger.error("Failed to parse macro plan", error=str(e), content=response.content[:1000])
+            raise ValueError(f"生成宏观计划失败: {str(e)}")
+
+    async def generate_cycle_detail(
+        self, 
+        user_profile: dict[str, Any], 
+        macro_weeks: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Fill in the details (exercises) for a specific set of macro weeks.
+        """
+        system_prompt = f"{SYSTEM_PROMPT}\n\n{CYCLE_DETAIL_PROMPT}"
         
-        # Validate structure
-        if not plan_data.get("weeks") or not isinstance(plan_data["weeks"], list):
-            raise ValueError("生成的数据结构不正确 (缺少 weeks)")
+        # Construct a prompt that includes the user profile and the specific macro weeks to detail
+        user_context = generate_user_prompt(user_profile)
+        macro_context = f"\n### 需要细化的宏观大纲\n{json.dumps(macro_weeks, ensure_ascii=False, indent=2)}"
         
-        return plan_data
+        messages = [
+            ChatMessage(role="system", content=system_prompt),
+            ChatMessage(role="user", content=f"{user_context}\n{macro_context}"),
+        ]
+        
+        response = await self.adapter.chat_completion(
+            messages=messages,
+            temperature=settings.AI_TEMPERATURE,
+        )
+        
+        cleaned_content = clean_json_string(response.content)
+        try:
+            detailed_data = json.loads(cleaned_content)
+            if "weeks" not in detailed_data:
+                logger.error("Detailed plan missing weeks", content=cleaned_content[:500])
+                raise ValueError("详细计划格式不正确")
+            return detailed_data
+        except Exception as e:
+            logger.error("Failed to parse detailed plan", error=str(e), content=response.content[:1000])
+            raise ValueError(f"生成详细内容失败: {str(e)}")
+
+    async def generate_training_plan(self, user_profile: dict[str, Any]) -> dict[str, Any]:
+        """
+        Generate a multi-stage training plan.
+        1. Generate macro outline
+        2. Detail the first 4 weeks (or all if total < 4)
+        """
+        # Step 1: Macro Outline
+        macro_plan = await self.generate_macro_plan(user_profile)
+        macro_weeks = macro_plan.get("macroWeeks", [])
+        total_weeks = len(macro_weeks)
+        
+        # Step 2: Detail first cycle (up to 4 weeks)
+        first_cycle = macro_weeks[:4]
+        detailed_plan = await self.generate_cycle_detail(user_profile, first_cycle)
+        
+        return {
+            "macroPlan": macro_plan,
+            "totalWeeks": total_weeks,
+            "weeks": detailed_plan["weeks"]
+        }
+
+    async def generate_next_cycle(
+        self,
+        user_profile: dict[str, Any],
+        macro_plan: dict[str, Any],
+        current_weeks_count: int
+    ) -> list[dict[str, Any]]:
+        """
+        Generate the next 4 weeks of detailed content based on macro plan.
+        """
+        macro_weeks = macro_plan.get("macroWeeks", [])
+        total_weeks = len(macro_weeks)
+        
+        if current_weeks_count >= total_weeks:
+            return []
+            
+        # Get next 4 weeks from macro plan
+        next_cycle = macro_weeks[current_weeks_count : current_weeks_count + 4]
+        
+        detailed_data = await self.generate_cycle_detail(user_profile, next_cycle)
+        return detailed_data["weeks"]
     
     async def analyze_workout_record(self, record_data: dict[str, Any]) -> str:
         """
@@ -156,20 +236,84 @@ class AIService:
             cleaned_json = clean_json_string(plan_json)
             
             try:
-                updated_plan = json.loads(cleaned_json)
-                # Remove JSON part from message
-                message = re.sub(
-                    r"---PLAN_UPDATE---[\s\S]*?---END_PLAN_UPDATE---",
-                    "",
-                    content
-                ).strip()
+                update_data = json.loads(cleaned_json)
                 
-                return {
-                    "message": message,
-                    "updatedPlan": updated_plan.get("weeks", updated_plan)
-                }
+                # Support both full 'weeks' and partial 'modifiedWeeks'
+                modified_weeks = []
+                if isinstance(update_data, list):
+                    modified_weeks = update_data
+                elif "modifiedWeeks" in update_data:
+                    modified_weeks = update_data["modifiedWeeks"]
+                elif "weeks" in update_data:
+                    modified_weeks = update_data["weeks"]
+                
+                if modified_weeks:
+                    # Merge modified weeks into current plan
+                    new_weeks = list(current_plan["weeks"])
+                    for m_week in modified_weeks:
+                        week_num = m_week.get("weekNumber")
+                        if week_num is not None:
+                            # Use weekNumber to find correct index
+                            idx = week_num - 1
+                            if 0 <= idx < len(new_weeks):
+                                # Granular merge for the week
+                                existing_week = dict(new_weeks[idx])
+                                
+                                # Update summary if provided
+                                if "summary" in m_week:
+                                    existing_week["summary"] = m_week["summary"]
+                                
+                                # Update days if provided
+                                if "days" in m_week:
+                                    existing_days = list(existing_week.get("days", []))
+                                    for m_day in m_week["days"]:
+                                        day_name = m_day.get("day")
+                                        # Find if this day already exists in the week
+                                        found_day_idx = -1
+                                        for d_idx, d in enumerate(existing_days):
+                                            if d.get("day") == day_name:
+                                                found_day_idx = d_idx
+                                                break
+                                        
+                                        if found_day_idx >= 0:
+                                            # Update existing day
+                                            existing_days[found_day_idx] = m_day
+                                        else:
+                                            # Add new day (should respect chronological order if possible, 
+                                            # but simple append for now)
+                                            existing_days.append(m_day)
+                                    
+                                    existing_week["days"] = existing_days
+                                
+                                new_weeks[idx] = existing_week
+                            else:
+                                # If weekNumber is out of range, append as new week
+                                if idx == len(new_weeks):
+                                    new_weeks.append(m_week)
+                        else:
+                            # Fallback if no weekNumber
+                            pass
+
+                    # Remove JSON part from message
+                    message = re.sub(
+                        r"---PLAN_UPDATE---[\s\S]*?---END_PLAN_UPDATE---",
+                        "",
+                        content
+                    ).strip()
+                    
+                    return {
+                        "message": message,
+                        "updatedPlan": new_weeks
+                    }
+                
+                return {"message": content}
+                
             except json.JSONDecodeError as e:
-                logger.warning("Failed to parse plan update JSON", error=str(e))
+                logger.warning(
+                    "Failed to parse plan update JSON",
+                    error=str(e),
+                    content=cleaned_json[:1000]
+                )
                 return {"message": content}
         
         # No plan update, just return message

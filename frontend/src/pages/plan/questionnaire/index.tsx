@@ -5,22 +5,43 @@ import { usePlanStore } from '../../../store/usePlanStore'
 import { showToast, showLoading, hideLoading, showConfirm } from '../../../utils/ui'
 import './index.scss'
 
-// 获取下周一的日期
+// 获取最近的下一个周一的日期
 function getNextMonday(): string {
   const today = new Date()
   const dayOfWeek = today.getDay()
-  const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
+  // 如果今天是周一，返回今天；否则返回下一个周一
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek
   const nextMonday = new Date(today)
   nextMonday.setDate(today.getDate() + daysUntilMonday)
   return nextMonday.toISOString().split('T')[0]
+}
+
+// 获取默认目标日期（3个月后）
+function getDefaultTargetDate(): string {
+  const today = new Date()
+  const targetDate = new Date(today)
+  targetDate.setMonth(today.getMonth() + 3)
+  return targetDate.toISOString().split('T')[0]
+}
+
+// 计算两个日期之间的周数
+function getWeeksBetween(startDate: string, endDate: string): number {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const diffTime = end.getTime() - start.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.ceil(diffDays / 7))
 }
 
 export default function Questionnaire() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
-  const [startDate, setStartDate] = useState(getNextMonday())
+  const [targetDate, setTargetDate] = useState(getDefaultTargetDate())
   const { setGenerating, generatePlan, setCurrentPlan } = usePlanStore()
+  
+  // 开始日期固定为最近的下周一
+  const startDate = useMemo(() => getNextMonday(), [])
 
   // 总步骤数 = 问题数 + 1（确认步骤）
   const totalSteps = TRAINING_QUESTIONS.length + 1
@@ -29,11 +50,17 @@ export default function Questionnaire() {
   const isLastStep = currentStep === totalSteps - 1
 
   // 格式化日期显示
-  const formattedStartDate = useMemo(() => {
-    const date = new Date(startDate)
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
     const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${weekDays[date.getDay()]}`
-  }, [startDate])
+  }
+
+  const formattedStartDate = useMemo(() => formatDate(startDate), [startDate])
+  const formattedTargetDate = useMemo(() => formatDate(targetDate), [targetDate])
+  
+  // 计算训练周数
+  const trainingWeeks = useMemo(() => getWeeksBetween(startDate, targetDate), [startDate, targetDate])
 
   const handleSingleSelect = (option: string) => {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: option }))
@@ -55,6 +82,51 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: newSelected }))
   }
 
+  // 处理带时长的多选（训练日 + 时长）
+  interface DayWithDuration {
+    day: string
+    duration: number
+  }
+
+  const handleMultiSelectWithDuration = (option: string) => {
+    const currentSelected = (answers[currentQuestion!.id] as DayWithDuration[]) || []
+    const existingIndex = currentSelected.findIndex(item => item.day === option)
+    
+    let newSelected: DayWithDuration[]
+    if (existingIndex >= 0) {
+      // 已选中，取消选择
+      newSelected = currentSelected.filter(item => item.day !== option)
+    } else {
+      // 未选中，添加并使用默认时长
+      newSelected = [...currentSelected, { 
+        day: option, 
+        duration: currentQuestion?.defaultDuration || 30 
+      }]
+    }
+    setAnswers(prev => ({ ...prev, [currentQuestion!.id]: newSelected }))
+  }
+
+  const handleDurationChange = (day: string, duration: number) => {
+    const currentSelected = (answers[currentQuestion!.id] as DayWithDuration[]) || []
+    const newSelected = currentSelected.map(item => 
+      item.day === day ? { ...item, duration } : item
+    )
+    setAnswers(prev => ({ ...prev, [currentQuestion!.id]: newSelected }))
+  }
+
+  const getSelectedDays = (): DayWithDuration[] => {
+    return (answers[currentQuestion?.id || ''] as DayWithDuration[]) || []
+  }
+
+  const isDaySelected = (day: string): boolean => {
+    return getSelectedDays().some(item => item.day === day)
+  }
+
+  const getDayDuration = (day: string): number => {
+    const item = getSelectedDays().find(item => item.day === day)
+    return item?.duration || currentQuestion?.defaultDuration || 30
+  }
+
   const handleTextInput = (value: string) => {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: value }))
   }
@@ -69,7 +141,10 @@ export default function Questionnaire() {
     // 普通问题步骤需要验证
     if (!currentQuestion) return
     
-    if (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && answers[currentQuestion.id].length === 0)) {
+    const answer = answers[currentQuestion.id]
+    
+    // 检查是否为空
+    if (!answer || (Array.isArray(answer) && answer.length === 0)) {
       showToast('请填写或选择内容', 'error')
       return
     }
@@ -84,8 +159,13 @@ export default function Questionnaire() {
   }
 
   const handleSubmit = async () => {
-    // 将开始日期加入答案
-    const userProfile = { ...answers, startDate }
+    // 将目标日期和训练周数加入用户档案
+    const userProfile = { 
+      ...answers, 
+      startDate,
+      targetDate,
+      trainingWeeks 
+    }
 
     setGenerating(true)
     showLoading('AI 教练正在为您规划...')
@@ -130,25 +210,42 @@ export default function Questionnaire() {
         {isConfirmStep ? (
           <>
             <span className='step-indicator'>最后一步</span>
-            <h2 className='question-title'>确认并选择开始日期</h2>
+            <h2 className='question-title'>确认训练目标日期</h2>
             
             <div className='confirm-section'>
               <div className='confirm-info'>
                 <p className='confirm-hint'>
-                  🎯 太棒了！问卷已完成。请选择训练计划的开始日期，我们将从这一天的周一开始为您安排第一周的训练。
+                  🎯 太棒了！问卷已完成。请设置您希望达成目标的日期，AI 教练将根据时间规划训练周期。
                 </p>
               </div>
               
               <div className='date-picker-section'>
-                <label className='date-label'>计划开始日期</label>
+                <label className='date-label'>🏁 目标完成日期</label>
                 <input
                   type='date'
                   className='date-input'
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  min={startDate}
                 />
-                <span className='date-display'>{formattedStartDate}</span>
+                <span className='date-display'>{formattedTargetDate}</span>
+              </div>
+
+              <div className='date-info-section'>
+                <div className='date-info-item'>
+                  <span className='info-icon'>📅</span>
+                  <div className='info-content'>
+                    <span className='info-label'>计划开始日期</span>
+                    <span className='info-value'>{formattedStartDate}</span>
+                  </div>
+                </div>
+                <div className='date-info-item'>
+                  <span className='info-icon'>⏱️</span>
+                  <div className='info-content'>
+                    <span className='info-label'>训练周期</span>
+                    <span className='info-value highlight'>{trainingWeeks} 周</span>
+                  </div>
+                </div>
               </div>
               
               <div className='summary-section'>
@@ -161,7 +258,13 @@ export default function Questionnaire() {
                   <div className='summary-item'>
                     <span className='item-label'>每周训练日</span>
                     <span className='item-value'>
-                      {Array.isArray(answers.frequency) ? answers.frequency.join('、') : answers.frequency || '-'}
+                      {Array.isArray(answers.frequency) 
+                        ? answers.frequency.map((item: any) => 
+                            typeof item === 'object' 
+                              ? `${item.day}(${item.duration}分钟)` 
+                              : item
+                          ).join('、') 
+                        : answers.frequency || '-'}
                     </span>
                   </div>
                   <div className='summary-item'>
@@ -206,6 +309,43 @@ export default function Questionnaire() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {currentQuestion?.type === 'multipleWithDuration' && (
+              <div className='options-list with-duration'>
+                {currentQuestion.options?.map(option => {
+                  const selected = isDaySelected(option)
+                  return (
+                    <div 
+                      key={option} 
+                      className={`option-item-with-duration ${selected ? 'selected' : ''}`}
+                    >
+                      <div 
+                        className='day-toggle'
+                        onClick={() => handleMultiSelectWithDuration(option)}
+                      >
+                        <span className='day-name'>{option}</span>
+                        {selected && <span className='check-mark'>✓</span>}
+                      </div>
+                      {selected && (
+                        <div className='duration-input-wrapper'>
+                          <input
+                            type='number'
+                            className='duration-input'
+                            value={getDayDuration(option)}
+                            onChange={(e) => handleDurationChange(option, Math.max(1, parseInt(e.target.value) || 30))}
+                            min={1}
+                            max={300}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className='duration-unit'>分钟</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                <p className='duration-hint'>💡 点击选择训练日，并设置每天可用的训练时长</p>
               </div>
             )}
 

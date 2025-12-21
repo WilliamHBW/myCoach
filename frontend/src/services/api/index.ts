@@ -69,8 +69,13 @@ async function del<T>(endpoint: string): Promise<T> {
 // Type Definitions
 // ========================================
 
+export interface DayWithDuration {
+  day: string
+  duration: number
+}
+
 export interface UserProfile {
-  [key: string]: string | string[]
+  [key: string]: string | string[] | number | DayWithDuration[]
 }
 
 export interface TrainingDay {
@@ -95,6 +100,8 @@ export interface TrainingPlan {
   createdAt: number
   startDate: string
   userProfile: UserProfile
+  macroPlan?: any
+  totalWeeks: number
   weeks: TrainingWeek[]
 }
 
@@ -154,6 +161,13 @@ export const planApi = {
    */
   update: async (id: string, weeks: TrainingWeek[]): Promise<TrainingPlan> => {
     return put<TrainingPlan>(`/plans/${id}`, { weeks })
+  },
+
+  /**
+   * Generate next cycle of training plan
+   */
+  generateNextCycle: async (id: string): Promise<TrainingPlan> => {
+    return post<TrainingPlan>(`/plans/${id}/next-cycle`)
   },
 
   /**
@@ -230,6 +244,13 @@ export const recordApi = {
    */
   delete: async (id: string): Promise<void> => {
     return del(`/records/${id}`)
+  },
+
+  /**
+   * Delete multiple workout records
+   */
+  batchDelete: async (ids: string[]): Promise<{ message: string }> => {
+    return post<{ message: string }>('/records/batch-delete', { ids })
   },
 
   /**

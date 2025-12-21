@@ -11,15 +11,34 @@ def generate_user_prompt(user_profile: dict[str, Any]) -> str:
     Generate user profile prompt for plan generation.
     Converts questionnaire answers into a structured prompt.
     """
-    # Handle training days (frequency)
-    training_days = user_profile.get("frequency", [])
-    if isinstance(training_days, list):
-        training_days = "、".join(training_days)
+    # Handle training days (frequency) - supports both old format (list of strings) 
+    # and new format (list of {day, duration} objects)
+    training_days_raw = user_profile.get("frequency", [])
+    training_days_formatted = ""
+    
+    if isinstance(training_days_raw, list) and len(training_days_raw) > 0:
+        # Check if it's the new format with duration
+        if isinstance(training_days_raw[0], dict) and 'day' in training_days_raw[0]:
+            # New format: [{day: "周一", duration: 30}, ...]
+            training_days_list = []
+            for item in training_days_raw:
+                day = item.get('day', '')
+                duration = item.get('duration', 30)
+                training_days_list.append(f"{day}（可用时长：{duration}分钟）")
+            training_days_formatted = "\n  ".join(training_days_list)
+        else:
+            # Old format: ["周一", "周二", ...]
+            training_days_formatted = "、".join(training_days_raw)
     
     # Handle equipment
     equipment = user_profile.get("equipment", "")
     if isinstance(equipment, list):
         equipment = "、".join(equipment)
+    
+    # Handle training duration
+    start_date = user_profile.get('startDate', '未填写')
+    target_date = user_profile.get('targetDate', '未填写')
+    training_weeks = user_profile.get('trainingWeeks', 4)
     
     return f"""
 ### 用户问卷数据
@@ -27,14 +46,26 @@ def generate_user_prompt(user_profile: dict[str, Any]) -> str:
 **基本信息：**
 - 性别: {user_profile.get('gender', '未填写')}
 - 年龄: {user_profile.get('age', '未填写')}岁
+- 身高: {user_profile.get('height', '未填写')}cm
+- 体重: {user_profile.get('weight', '未填写')}kg
 
 **训练目标：**
+- 主要训练项目: {user_profile.get('item', '未填写')}
 - 主要目标: {user_profile.get('goal', '未填写')}
+- 目标完成日期: {target_date}
 - 当前水平: {user_profile.get('level', '未填写')}
 
+**训练时间规划：**
+- 计划开始日期: {start_date}
+- 目标完成日期: {target_date}
+- 训练周期: {training_weeks} 周
+
 **训练安排：**
-- 训练日: {training_days or '未填写'}
+- 训练日及可用时长:
+  {training_days_formatted or '未填写'}
 - 可用器材: {equipment or '未填写'}
+
+**重要约束：请根据每天的可用训练时长来安排训练内容，确保当天的训练总时长不超过用户指定的可用时间。**
 
 **健康状况：**
 - 伤病史/身体限制: {user_profile.get('injuries', '无')}
@@ -44,7 +75,7 @@ def generate_user_prompt(user_profile: dict[str, Any]) -> str:
 
 ---
 
-请根据以上信息，运用你的专业知识，为该用户生成一份科学、个性化的4周训练计划。确保计划符合用户的目标、水平和器材条件，同时考虑伤病风险。
+请根据以上信息，运用你的专业知识，为该用户生成一份科学、个性化的 **{training_weeks} 周** 训练计划。确保计划符合用户的目标、水平和器材条件，同时考虑伤病风险和每天的可用训练时长。训练计划应该帮助用户在目标日期（{target_date}）前达成训练目标。
 """
 
 
@@ -127,10 +158,20 @@ def generate_plan_update_prompt(
     """
     user_profile = current_plan.get("userProfile", {})
     
-    # Handle training days
-    training_days = user_profile.get("frequency", [])
-    if isinstance(training_days, list):
-        training_days = "、".join(training_days)
+    # Handle training days - supports both old and new format
+    training_days_raw = user_profile.get("frequency", [])
+    training_days = ""
+    
+    if isinstance(training_days_raw, list) and len(training_days_raw) > 0:
+        if isinstance(training_days_raw[0], dict) and 'day' in training_days_raw[0]:
+            # New format: [{day: "周一", duration: 30}, ...]
+            training_days = "、".join([
+                f"{item.get('day')}({item.get('duration', 30)}分钟)" 
+                for item in training_days_raw
+            ])
+        else:
+            # Old format: ["周一", "周二", ...]
+            training_days = "、".join(training_days_raw)
     
     # Handle equipment
     equipment = user_profile.get("equipment", "")

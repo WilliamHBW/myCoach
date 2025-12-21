@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models.record import WorkoutRecord
@@ -45,6 +47,11 @@ class AnalyzeRecordRequest(BaseModel):
 class UpdateRecordRequest(BaseModel):
     """Request to update a workout record."""
     data: dict[str, Any] = Field(..., description="Updated workout data")
+
+
+class BatchDeleteRequest(BaseModel):
+    """Request to delete multiple workout records."""
+    ids: list[UUID] = Field(..., description="List of record IDs to delete")
 
 
 # ========================================
@@ -186,11 +193,60 @@ async def delete_record(
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
     
+    # Notify sync server to untrack this record (if it came from external source)
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"{settings.INTERVALS_SERVER_URL}/api/sync/untrack-record",
+                json={"localRecordId": str(record_id)},
+                timeout=2.0
+            )
+    except Exception as e:
+        # Don't fail deletion if notification fails, just log it
+        logger.warning("Failed to notify sync server of record deletion", error=str(e))
+
     await db.delete(record)
     
     logger.info("Record deleted", record_id=str(record_id))
     
     return {"message": "记录已删除"}
+
+
+@router.post("/batch-delete")
+async def batch_delete_records(
+    request: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete multiple workout records.
+    """
+    logger.info("Batch deleting workout records", count=len(request.ids))
+    
+    # Notify sync server for each record
+    # (Doing this sequentially for simplicity, but could be batched if intervals-server supported it)
+    async with httpx.AsyncClient() as client:
+        for record_id in request.ids:
+            try:
+                await client.post(
+                    f"{settings.INTERVALS_SERVER_URL}/api/sync/untrack-record",
+                    json={"localRecordId": str(record_id)},
+                    timeout=2.0
+                )
+            except Exception as e:
+                logger.warning("Failed to notify sync server of record deletion", record_id=str(record_id), error=str(e))
+
+    # Delete from database
+    result = await db.execute(
+        select(WorkoutRecord).where(WorkoutRecord.id.in_(request.ids))
+    )
+    records = result.scalars().all()
+    
+    for record in records:
+        await db.delete(record)
+    
+    logger.info("Batch delete completed", count=len(records))
+    
+    return {"message": f"成功删除 {len(records)} 条记录"}
 
 
 @router.post("/{record_id}/analyze", response_model=RecordResponse)

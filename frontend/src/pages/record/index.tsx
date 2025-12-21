@@ -118,7 +118,7 @@ function ProDataDisplay({ proData, sportType }: { proData: ParsedProData; sportT
 
 export default function RecordList() {
   const navigate = useNavigate()
-  const { records, fetchRecords, analyzeRecord, deleteRecord, updateRecord } = useRecordStore()
+  const { records, fetchRecords, analyzeRecord, deleteRecord, updateRecord, batchDeleteRecords } = useRecordStore()
   const { currentPlan, updatePlanWeeks } = usePlanStore()
   
   // 更新训练弹窗状态
@@ -278,26 +278,15 @@ export default function RecordList() {
       confirmText: '删除',
       onConfirm: async () => {
         showLoading('正在删除...')
-        let successCount = 0
-        let failCount = 0
-
-        for (const id of selectedIds) {
-          try {
-            await deleteRecord(id)
-            successCount++
-          } catch (e) {
-            failCount++
-          }
-        }
-
-        hideLoading()
-        setSelectedIds(new Set())
-        setIsSelectionMode(false)
-
-        if (failCount === 0) {
-          showToast(`成功删除 ${successCount} 条记录`, 'success')
-        } else {
-          showToast(`删除完成：成功 ${successCount} 条，失败 ${failCount} 条`, 'warning')
+        try {
+          await batchDeleteRecords(Array.from(selectedIds))
+          hideLoading()
+          setSelectedIds(new Set())
+          setIsSelectionMode(false)
+          showToast(`成功删除记录`, 'success')
+        } catch (e: any) {
+          hideLoading()
+          showToast(e.message || '删除失败', 'error')
         }
       }
     })

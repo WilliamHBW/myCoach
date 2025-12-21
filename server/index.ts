@@ -3,7 +3,14 @@ import cors from 'cors'
 import intervalsRoutes from './routes/intervals.js'
 import stravaRoutes from './routes/strava.js'
 import webhookRoutes from './routes/webhook.js'
-import { getSetting, setSetting } from './db/index.js'
+import { 
+  getSetting, 
+  setSetting, 
+  getSyncedRecordByLocalId, 
+  getStravaSyncedRecordByLocalId,
+  clearLocalRecordId,
+  clearStravaLocalRecordId
+} from './db/index.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -80,6 +87,34 @@ app.use((req, res, next) => {
 app.use('/api/intervals', intervalsRoutes)
 app.use('/api/strava', stravaRoutes)
 app.use('/webhook', webhookRoutes)
+
+// Untrack record reference (when record is deleted in backend)
+app.post('/api/sync/untrack-record', (req, res) => {
+  const { localRecordId } = req.body
+  if (!localRecordId) {
+    return res.status(400).json({ error: 'localRecordId is required' })
+  }
+
+  let cleared = false
+  
+  // Check Intervals records
+  const intervalsRecord = getSyncedRecordByLocalId(localRecordId)
+  if (intervalsRecord) {
+    clearLocalRecordId(intervalsRecord.id)
+    cleared = true
+    console.log(`[Sync] Untracked Intervals record ${intervalsRecord.id} for local record ${localRecordId}`)
+  }
+
+  // Check Strava records
+  const stravaRecord = getStravaSyncedRecordByLocalId(localRecordId)
+  if (stravaRecord) {
+    clearStravaLocalRecordId(stravaRecord.id)
+    cleared = true
+    console.log(`[Sync] Untracked Strava record ${stravaRecord.id} for local record ${localRecordId}`)
+  }
+
+  res.json({ success: true, cleared })
+})
 
 // Health check
 app.get('/api/health', (_req, res) => {

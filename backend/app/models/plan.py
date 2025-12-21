@@ -31,6 +31,8 @@ class TrainingPlan(Base):
     )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     user_profile: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    macro_plan: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    total_weeks: Mapped[int] = mapped_column(nullable=False, default=4)
     weeks: Mapped[list] = mapped_column(JSONB, nullable=False)
     
     def to_dict(self) -> dict:
@@ -40,6 +42,8 @@ class TrainingPlan(Base):
             "createdAt": int(self.created_at.timestamp() * 1000),
             "startDate": self.start_date.isoformat(),
             "userProfile": self.user_profile,
+            "macroPlan": self.macro_plan,
+            "totalWeeks": self.total_weeks,
             "weeks": self.weeks,
         }
 

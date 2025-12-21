@@ -16,6 +16,7 @@ interface PlanState {
   // API Actions
   fetchPlans: () => Promise<TrainingPlan[]>
   generatePlan: (userProfile: UserProfile, startDate: string) => Promise<TrainingPlan>
+  generateNextCycle: (id: string) => Promise<TrainingPlan>
   deletePlan: (id: string) => Promise<void>
 }
 
@@ -67,6 +68,20 @@ export const usePlanStore = create<PlanState>((set, get) => ({
       throw error
     } finally {
       set({ isGenerating: false })
+    }
+  },
+
+  generateNextCycle: async (id: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const plan = await planApi.generateNextCycle(id)
+      set({ currentPlan: plan })
+      return plan
+    } catch (error: any) {
+      set({ error: error.message })
+      throw error
+    } finally {
+      set({ isLoading: false })
     }
   },
 

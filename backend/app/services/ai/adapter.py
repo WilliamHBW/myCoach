@@ -113,7 +113,7 @@ class OpenAICompatibleAdapter(AIProviderAdapter):
         start_time = time.time()
         
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 response = await client.post(
                     endpoint,
                     headers={
@@ -124,6 +124,7 @@ class OpenAICompatibleAdapter(AIProviderAdapter):
                         "model": self.model,
                         "messages": [m.to_dict() for m in messages],
                         "temperature": temperature,
+                        "max_tokens": 8192,
                     },
                 )
                 
@@ -222,7 +223,7 @@ class ClaudeAdapter(AIProviderAdapter):
         start_time = time.time()
         
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 request_body = {
                     "model": self.model,
                     "max_tokens": 4096,

@@ -56,6 +56,7 @@ export default function Settings() {
     testConnection,
     disconnect,
     syncActivities,
+    resetSync: resetIntervalsSync,
     clearError
   } = useIntervalsStore()
 
@@ -72,6 +73,7 @@ export default function Settings() {
     startOAuth: startStravaOAuth,
     disconnect: disconnectStrava,
     syncActivities: syncStravaActivities,
+    resetSync: resetStravaSync,
     clearError: clearStravaError,
     handleOAuthCallback
   } = useStravaStore()
@@ -169,6 +171,15 @@ export default function Settings() {
     }
   }
 
+  const handleStravaReset = async () => {
+    try {
+      const result = await resetStravaSync()
+      showToast(`已重置 ${result.cleared} 条记录的同步状态`, 'success')
+    } catch (e: any) {
+      showToast(e.message || '重置失败', 'error')
+    }
+  }
+
   // Intervals.icu handlers
   const handleIntervalsConnect = async () => {
     if (!intervalsApiKey) {
@@ -214,6 +225,15 @@ export default function Settings() {
       showToast(`同步完成: ${result.synced}/${result.total} 条记录`, 'success')
     } else {
       showToast(result.message || '同步失败', 'error')
+    }
+  }
+
+  const handleIntervalsReset = async () => {
+    try {
+      const result = await resetIntervalsSync()
+      showToast(`已重置 ${result.cleared} 条记录的同步状态`, 'success')
+    } catch (e: any) {
+      showToast(e.message || '重置失败', 'error')
     }
   }
 
@@ -274,6 +294,14 @@ export default function Settings() {
                 disabled={isSyncing}
               >
                 {isSyncing ? '同步中...' : '立即同步'}
+              </button>
+
+              <button 
+                className='reset-sync-btn'
+                onClick={handleIntervalsReset}
+                title="重置同步状态，允许重新同步已删除的记录"
+              >
+                🔄 重置同步
               </button>
             </div>
             
@@ -386,6 +414,14 @@ export default function Settings() {
                 disabled={stravaSyncing}
               >
                 {stravaSyncing ? '同步中...' : '立即同步'}
+              </button>
+
+              <button 
+                className='reset-sync-btn'
+                onClick={handleStravaReset}
+                title="重置同步状态，允许重新同步已删除的记录"
+              >
+                🔄 重置同步
               </button>
             </div>
             

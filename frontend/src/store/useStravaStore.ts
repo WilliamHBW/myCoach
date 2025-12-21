@@ -29,6 +29,7 @@ interface StravaState {
   testConnection: () => Promise<TestConnectionResult>
   disconnect: () => Promise<void>
   syncActivities: (oldest?: string, newest?: string) => Promise<SyncResult>
+  resetSync: () => Promise<{ success: boolean; cleared: number; message: string }>
   fetchSyncedRecords: () => Promise<void>
   clearError: () => void
 }
@@ -222,6 +223,25 @@ export const useStravaStore = create<StravaState>((set, get) => ({
         isSyncing: false 
       })
       return errorResult
+    }
+  },
+  
+  // Reset synced records
+  resetSync: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const result = await stravaClient.reset()
+      set({ 
+        syncedRecords: [],
+        isLoading: false 
+      })
+      return result
+    } catch (error: any) {
+      set({ 
+        error: error.message || '重置失败', 
+        isLoading: false 
+      })
+      throw error
     }
   },
   

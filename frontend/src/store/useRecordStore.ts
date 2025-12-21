@@ -14,6 +14,7 @@ interface RecordState {
   addRecord: (data: Record<string, any>, planId?: string) => Promise<WorkoutRecord>
   updateRecord: (id: string, data: Record<string, any>) => Promise<WorkoutRecord>
   deleteRecord: (id: string) => Promise<void>
+  batchDeleteRecords: (ids: string[]) => Promise<void>
   analyzeRecord: (id: string) => Promise<WorkoutRecord>
 }
 
@@ -73,6 +74,18 @@ export const useRecordStore = create<RecordState>((set, get) => ({
       await recordApi.delete(id)
       set((state) => ({
         records: state.records.filter(r => r.id !== id)
+      }))
+    } catch (error: any) {
+      set({ error: error.message })
+      throw error
+    }
+  },
+
+  batchDeleteRecords: async (ids: string[]) => {
+    try {
+      await recordApi.batchDelete(ids)
+      set((state) => ({
+        records: state.records.filter(r => !ids.includes(r.id))
       }))
     } catch (error: any) {
       set({ error: error.message })
