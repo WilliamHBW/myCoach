@@ -8,9 +8,15 @@ pydantic-settings==2.1.0
 sqlalchemy==2.0.25
 asyncpg==0.29.0
 alembic==1.13.1
+pgvector==0.2.5
 
 # HTTP Client (for AI providers)
 httpx==0.26.0
+
+# LangGraph and LangChain
+langgraph==0.2.60
+langchain==0.3.14
+langchain-openai==0.2.14
 
 # Utilities
 python-dotenv==1.0.0

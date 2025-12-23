@@ -1,7 +1,7 @@
 """
 Workout Records API endpoints.
 """
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models.record import WorkoutRecord
-from app.services.ai import AIService
+from app.services.ai import AIService, AgentService
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -37,6 +37,17 @@ class RecordResponse(BaseModel):
     planId: str | None
     data: dict[str, Any]
     analysis: str | None
+
+
+class AnalyzeRecordResponse(BaseModel):
+    """Response from record analysis with optional update suggestion."""
+    id: str
+    createdAt: int
+    planId: str | None
+    data: dict[str, Any]
+    analysis: str | None
+    suggestUpdate: bool = False
+    updateSuggestion: Optional[str] = None
 
 
 class AnalyzeRecordRequest(BaseModel):
@@ -249,13 +260,16 @@ async def batch_delete_records(
     return {"message": f"成功删除 {len(records)} 条记录"}
 
 
-@router.post("/{record_id}/analyze", response_model=RecordResponse)
+@router.post("/{record_id}/analyze", response_model=AnalyzeRecordResponse)
 async def analyze_record(
     record_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Analyze a workout record using AI.
+    Analyze a workout record using AI with context awareness.
+    
+    Uses LangGraph agent with vector context for enhanced analysis.
+    May suggest plan updates based on analysis results.
     """
     result = await db.execute(
         select(WorkoutRecord).where(WorkoutRecord.id == record_id)
@@ -268,27 +282,38 @@ async def analyze_record(
     logger.info("Analyzing record", record_id=str(record_id))
     
     try:
-        ai_service = AIService()
-        analysis = await ai_service.analyze_workout_record({
-            "type": record.data.get("type"),
-            "duration": record.data.get("duration"),
-            "rpe": record.data.get("rpe"),
-            "heartRate": record.data.get("heartRate"),
-            "notes": record.data.get("notes"),
-        })
+        agent_service = AgentService(db)
+        analysis_result = await agent_service.analyze_workout_record(
+            plan_id=str(record.plan_id) if record.plan_id else None,
+            record_id=str(record_id),
+            record_data={
+                "type": record.data.get("type"),
+                "duration": record.data.get("duration"),
+                "rpe": record.data.get("rpe"),
+                "heartRate": record.data.get("heartRate"),
+                "notes": record.data.get("notes"),
+            }
+        )
         
         # Save analysis to database
-        record.analysis = analysis
+        analysis_text = analysis_result.get("analysis", "")
+        record.analysis = analysis_text
         await db.flush()
         
-        logger.info("Record analyzed", record_id=str(record_id))
+        logger.info(
+            "Record analyzed",
+            record_id=str(record_id),
+            suggest_update=analysis_result.get("suggestUpdate", False)
+        )
         
-        return RecordResponse(
+        return AnalyzeRecordResponse(
             id=str(record.id),
             createdAt=int(record.created_at.timestamp() * 1000),
             planId=str(record.plan_id) if record.plan_id else None,
             data=record.data,
             analysis=record.analysis,
+            suggestUpdate=analysis_result.get("suggestUpdate", False),
+            updateSuggestion=analysis_result.get("updateSuggestion"),
         )
         
     except Exception as e:
