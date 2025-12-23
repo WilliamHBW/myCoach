@@ -46,7 +46,7 @@ class VectorStore:
             content_type=content_type,
             content_text=content_text,
             embedding=embedding,
-            metadata=metadata or {}
+            extra_metadata=metadata or {}
         )
         
         self.db.add(record)

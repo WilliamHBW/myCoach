@@ -1,66 +1,67 @@
 # MyCoach - AI 私人健身教练
 
-基于 AI 的个人健身教练应用，为用户提供科学、个性化的训练计划和运动分析。
+基于 AI 智能体（AI Agents）的个人健身教练应用，为用户提供科学、周期化、个性化的训练计划和运动分析。
 
 ## 架构概览
 
-```
-myCoach/
-├── frontend/                 # React 前端应用
-│   ├── src/
-│   │   ├── services/api/     # 后端 API 调用层
-│   │   ├── services/intervals/ # Intervals.icu 客户端
-│   │   ├── services/strava/    # Strava 客户端
-│   │   ├── store/            # Zustand 状态管理
-│   │   ├── pages/            # 页面组件
-│   │   └── utils/            # 工具函数
-│   └── Dockerfile
-├── backend/                  # FastAPI 后端服务
-│   ├── app/
-│   │   ├── api/              # REST API 端点
-│   │   ├── services/ai/      # AI Provider Adapter
-│   │   ├── prompts/          # Prompt 模板
-│   │   ├── models/           # SQLAlchemy 数据模型
-│   │   └── core/             # 配置、日志、数据库
-│   └── Dockerfile
-├── server/                   # Node.js Intervals 集成服务
-│   ├── routes/               # API 路由
-│   ├── services/             # 业务逻辑
-│   ├── db/                   # SQLite 数据库
-│   └── Dockerfile
-├── doc/                      # 文档目录
-│   └── api_server.md         # API Server 配置文档
-├── docker-compose.yml        # Docker 一键部署
-└── env.example               # 环境变量示例
+```mermaid
+graph TD
+    User[用户] <--> Frontend[React 前端]
+    Frontend <--> Backend[FastAPI 后端]
+    Frontend <--> IntegrationServer[Node.js 集成服务]
+    
+    subgraph "Backend (Agent System)"
+        Backend <--> AgentGraph[LangGraph 编排层]
+        AgentGraph <--> AgentA[计划调整智能体]
+        AgentGraph <--> AgentB[记录分析智能体]
+        AgentGraph <--> VectorDB[向量上下文库]
+        Backend <--> PostgreSQL[(PostgreSQL)]
+    end
+    
+    subgraph "Integration Service"
+        IntegrationServer <--> SQLite[(SQLite)]
+        IntegrationServer <--> Intervals[Intervals.icu API]
+        IntegrationServer <--> Strava[Strava API]
+    end
 ```
 
 ## 功能特性
 
-- **智能训练计划生成**：基于用户问卷，AI 生成个性化的 4 周周期化训练计划
-- **运动记录追踪**：记录每次训练，支持专业数据（间歇、配速等）
-- **AI 教练分析**：智能分析训练表现，提供专业建议
-- **计划动态调整**：基于训练记录，AI 自动调整后续计划
-- **自然语言对话**：通过对话方式灵活修改训练计划
-- **Intervals.icu 同步**：自动从 Intervals.icu 导入骑行、跑步、游泳等运动数据
-- **Strava 同步**：直接从 Strava 导入运动活动数据
+- **智能计划生成**：基于用户问卷和 AI 算法，生成 4 周周期化（Macro/Micro）训练计划。
+- **多智能体协作**：
+    - **Agent A (Plan Agent)**：负责理解用户意图，精准修改训练计划。
+    - **Agent B (Analysis Agent)**：负责分析单次或周期运动记录，提供专业洞察。
+    - **智能联动**：基于 Agent B 的分析建议，Agent A 可自动执行计划调整。
+- **RAG 上下文管理**：通过向量数据库存储和检索用户的历史对话、训练偏好和计划变更，使 AI 教练更懂你。
+- **自然语言对话**：支持通过聊天方式灵活、细粒度地修改训练计划（如：把明天的跑步换成游泳）。
+- **多平台数据同步**：
+    - **Intervals.icu**：深度集成，支持运动记录同步及 Webhook 实时通知。
+    - **Strava**：直接导入跑步、骑行、游泳等活动数据。
+- **专业数据追踪**：记录 RPE（感知运动强度）、心率、配速、功率等专业训练指标。
 
 ## 技术栈
 
 ### 前端
-- React 18 + TypeScript
-- Vite 构建工具
-- Zustand 状态管理
-- SCSS 样式
+- **React 18** + **TypeScript**
+- **Vite**：构建工具
+- **Zustand**：状态管理
+- **SCSS**：样式方案
 
 ### 后端
-- Python FastAPI
-- SQLAlchemy (async)
-- PostgreSQL 数据库
-- AI Provider Adapter (支持 OpenAI, DeepSeek, Claude)
+- **FastAPI**：Python 高性能 Web 框架
+- **LangGraph**：AI 智能体工作流编排
+- **SQLAlchemy (Async)**：数据库 ORM
+- **PostgreSQL**：主数据存储
+- **AI Provider**：适配 OpenAI, DeepSeek, Claude 等主流大模型
+
+### 数据集成服务
+- **Node.js** + **Express**
+- **SQLite**：轻量级本地同步状态存储
+- **Intervals.icu / Strava API**：第三方运动平台集成
 
 ### 部署
-- Docker + Docker Compose
-- Nginx 反向代理
+- **Docker** + **Docker Compose**
+- **Nginx**：反向代理与静态资源服务
 
 ## 快速开始
 
@@ -75,7 +76,7 @@ cd myCoach
 
 ```bash
 cp env.example .env
-# 编辑 .env 文件，填入你的 AI API Key
+# 编辑 .env 文件，填入你的 AI API Key 和第三方平台凭证
 ```
 
 ### 3. 使用 Docker Compose 启动
@@ -84,109 +85,56 @@ cp env.example .env
 docker compose up -d
 ```
 
-服务将在以下端口启动：
-- 前端：http://localhost:3000
-- 后端 API：http://localhost:8000
-- Intervals 集成服务：http://localhost:3001
-- PostgreSQL：localhost:5433
+服务端口映射：
+- 前端：[http://localhost:3000](http://localhost:3000)
+- 后端 API：[http://localhost:8000](http://localhost:8000)
+- 集成服务：[http://localhost:3001](http://localhost:3001)
 
-### 4. 访问应用
+## 项目结构
 
-打开浏览器访问 http://localhost:3000
-
-## 开发模式
-
-### 后端开发
-
-```bash
-cd backend
-pip install -r requirements.txt
-
-# 设置环境变量
-export DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mycoach
-export AI_API_KEY=your_api_key
-
-# 启动开发服务器
-uvicorn app.main:app --reload --port 8000
+```
+myCoach/
+├── frontend/                 # React 前端应用
+│   ├── src/
+│   │   ├── services/         # API 及第三方客户端 (Strava/Intervals)
+│   │   ├── store/            # Zustand 状态管理
+│   │   ├── pages/            # 业务页面 (计划/记录/设置)
+│   │   └── constants/        # 问卷配置及字段定义
+├── backend/                  # FastAPI 后端 (AI 核心)
+│   ├── app/
+│   │   ├── api/              # REST API 路由
+│   │   ├── services/
+│   │   │   ├── agents/       # LangGraph 智能体逻辑 (Graph/State/Agents)
+│   │   │   ├── context/      # RAG 上下文管理器 (Vector Store/Embedding)
+│   │   │   └── ai/           # 大模型服务适配器
+│   │   ├── models/           # SQLAlchemy 模型
+│   │   └── prompts/          # AI 提示词模板
+├── server/                   # Node.js 集成服务 (中转站)
+│   ├── routes/               # Intervals/Strava/Webhook 路由
+│   ├── services/             # 业务逻辑处理
+│   └── db/                   # SQLite 数据库配置
+└── doc/                      # 项目文档
 ```
 
-### 前端开发
+## API 端点概览
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 训练计划 (`/api/plans`)
+- `POST /generate`: 生成新计划
+- `GET /`: 获取计划列表
+- `POST /{id}/chat`: AI 对话调整计划
+- `POST /{id}/update`: 基于记录自动分析并建议调整
+- `POST /{id}/confirm-update`: 确认并应用分析建议
+- `POST /{id}/next-cycle`: 生成下一阶段详细内容
 
-前端开发服务器会自动代理 API 请求到后端。
-
-## API 端点
-
-### 训练计划
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | /api/plans/generate | 生成训练计划 |
-| GET | /api/plans | 获取计划列表 |
-| GET | /api/plans/{id} | 获取单个计划 |
-| PUT | /api/plans/{id} | 更新计划 |
-| DELETE | /api/plans/{id} | 删除计划 |
-| POST | /api/plans/{id}/chat | 对话调整计划 |
-| POST | /api/plans/{id}/update | 基于记录更新计划 |
-
-### 运动记录
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | /api/records | 创建记录 |
-| GET | /api/records | 获取记录列表 |
-| DELETE | /api/records/{id} | 删除记录 |
-| POST | /api/records/{id}/analyze | AI 分析记录 |
-
-## 安全性
-
-- **前端不接触敏感信息**：API Key、Prompt 模板等全部由后端管理
-- **日志脱敏**：后端日志不记录 API Key 和完整 Prompt 内容
-- **环境变量配置**：所有敏感配置通过环境变量注入
-- **数据库隔离**：PostgreSQL 仅内网访问
-
-## AI Provider 配置
-
-支持多种 AI 提供商，通过环境变量配置：
-
-```bash
-# OpenAI (默认)
-AI_PROVIDER=openai
-AI_API_KEY=sk-xxx
-
-# DeepSeek
-AI_PROVIDER=deepseek
-AI_API_KEY=sk-xxx
-
-# Claude
-AI_PROVIDER=claude
-AI_API_KEY=sk-xxx
-
-# 自定义 OpenAI 兼容 API
-AI_PROVIDER=openai
-AI_BASE_URL=https://your-proxy.com/v1
-AI_MODEL=gpt-4o
-AI_API_KEY=your_key
-```
-
-## 数据同步配置
-
-MyCoach 支持从以下平台同步运动数据：
-
-- **[Intervals.icu](https://intervals.icu)** - 强大的训练分析平台，支持从 Garmin、Strava、Wahoo 等设备/平台导入数据
-- **[Strava](https://www.strava.com)** - 全球最大的运动社交平台，直接同步跑步、骑行、游泳等活动
-
-详细配置说明请参阅：**[doc/api_server.md](doc/api_server.md)**
-
-## 许可证
-
-MIT License
+### 运动记录 (`/api/records`)
+- `POST /`: 创建/同步记录
+- `GET /`: 获取记录列表
+- `POST /{id}/analyze`: AI 智能分析单次运动
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 或 Pull Request 来完善这个 AI 教练！
+
+## 许可证
+
+[MIT License](LICENSE)

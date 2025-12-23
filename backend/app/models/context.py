@@ -53,7 +53,7 @@ class ContextEmbedding(Base):
         Vector(1536),
         nullable=False
     )
-    metadata: Mapped[dict] = mapped_column(
+    extra_metadata: Mapped[dict] = mapped_column(
         JSONB,
         nullable=True,
         default=dict
@@ -78,6 +78,6 @@ class ContextEmbedding(Base):
             "planId": str(self.plan_id) if self.plan_id else None,
             "contentType": self.content_type,
             "contentText": self.content_text,
-            "metadata": self.metadata,
+            "metadata": self.extra_metadata,
         }
 
