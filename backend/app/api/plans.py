@@ -6,6 +6,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,8 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models.plan import TrainingPlan
 from app.models.record import WorkoutRecord
-from app.services.ai import AIService, AgentService
+from app.services.agent import CoachAgent, ActionType, AgentRequest
+from app.services.external import ExportService
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -41,6 +43,7 @@ class ChatModifyRequest(BaseModel):
     conversationHistory: list[dict[str, str]] = Field(
         default=[], description="Previous chat messages"
     )
+    stream: bool = Field(default=False, description="Enable streaming response")
 
 
 class ConfirmUpdateRequest(BaseModel):
@@ -86,14 +89,22 @@ async def generate_plan(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Generate a new 4-week training plan using AI.
+    Generate a new training plan using AI CoachAgent.
     Also stores initial plan context for vector-based retrieval.
     """
     logger.info("Generating new training plan")
     
     try:
-        ai_service = AIService()
-        plan_data = await ai_service.generate_training_plan(request.userProfile)
+        agent = CoachAgent(db)
+        result = await agent.generate_plan(
+            user_profile=request.userProfile,
+            start_date=request.startDate,
+        )
+        
+        if not result.success:
+            raise ValueError(result.error or "Plan generation failed")
+        
+        plan_data = result.plan or {}
         
         # Parse start date
         try:
@@ -105,9 +116,9 @@ async def generate_plan(
         db_plan = TrainingPlan(
             start_date=start_date,
             user_profile=request.userProfile,
-            macro_plan=plan_data["macroPlan"],
-            total_weeks=plan_data["totalWeeks"],
-            weeks=plan_data["weeks"],
+            macro_plan=plan_data.get("macroPlan"),
+            total_weeks=plan_data.get("totalWeeks", 4),
+            weeks=plan_data.get("weeks", result.updated_weeks or []),
         )
         db.add(db_plan)
         await db.flush()
@@ -115,8 +126,7 @@ async def generate_plan(
         
         # Store initial plan context for vector retrieval
         try:
-            agent_service = AgentService(db)
-            await agent_service.store_initial_plan_context(
+            await agent.store_initial_plan_context(
                 plan_id=str(db_plan.id),
                 plan_data={
                     "weeks": db_plan.weeks,
@@ -267,7 +277,7 @@ async def chat_modify_plan(
 ):
     """
     Modify plan through natural language chat with AI.
-    Uses LangGraph agent with vector context for enhanced responses.
+    Uses CoachAgent with vector context for enhanced responses.
     """
     result = await db.execute(
         select(TrainingPlan).where(TrainingPlan.id == plan_id)
@@ -280,10 +290,10 @@ async def chat_modify_plan(
     logger.info("Chat modify request", plan_id=str(plan_id))
     
     try:
-        agent_service = AgentService(db)
-        modification_result = await agent_service.modify_plan_with_chat(
+        agent = CoachAgent(db)
+        modification_result = await agent.modify_plan(
             plan_id=str(plan_id),
-            current_plan={
+            plan_data={
                 "weeks": plan.weeks,
                 "userProfile": plan.user_profile,
                 "startDate": plan.start_date.isoformat(),
@@ -293,20 +303,77 @@ async def chat_modify_plan(
         )
         
         # If plan was updated, save to database
-        if modification_result.get("updatedPlan"):
-            plan.weeks = modification_result["updatedPlan"]
+        if modification_result.updated_weeks:
+            plan.weeks = modification_result.updated_weeks
             plan.updated_at = datetime.utcnow()
             await db.flush()
             logger.info("Plan updated via chat", plan_id=str(plan_id))
         
         return ChatModifyResponse(
-            message=modification_result["message"],
-            updatedPlan=modification_result.get("updatedPlan"),
+            message=modification_result.message,
+            updatedPlan=modification_result.updated_weeks,
         )
         
     except Exception as e:
         logger.error("Chat modify error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{plan_id}/chat/stream")
+async def chat_modify_plan_stream(
+    plan_id: UUID,
+    request: ChatModifyRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Modify plan through natural language chat with streaming response.
+    
+    Returns Server-Sent Events (SSE) stream.
+    """
+    result = await db.execute(
+        select(TrainingPlan).where(TrainingPlan.id == plan_id)
+    )
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    
+    logger.info("Chat modify stream request", plan_id=str(plan_id))
+    
+    agent = CoachAgent(db)
+    
+    async def generate():
+        try:
+            stream_request = AgentRequest(
+                action=ActionType.MODIFY_PLAN,
+                plan_id=str(plan_id),
+                plan_data={
+                    "weeks": plan.weeks,
+                    "userProfile": plan.user_profile,
+                    "startDate": plan.start_date.isoformat(),
+                },
+                user_message=request.message,
+                conversation_history=request.conversationHistory,
+                stream=True,
+            )
+            
+            async for chunk in agent.execute_stream(stream_request):
+                yield f"data: {chunk}\n\n"
+            
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error("Streaming error", error=str(e))
+            yield f"data: 错误: {str(e)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 @router.post("/{plan_id}/next-cycle", response_model=PlanResponse)
@@ -333,12 +400,19 @@ async def generate_next_cycle_api(
         raise HTTPException(status_code=400, detail="计划已全部细化完成")
         
     try:
-        ai_service = AIService()
-        next_weeks = await ai_service.generate_next_cycle(
+        from app.services.agent.actions.generate_plan import GeneratePlanAction
+        
+        action = GeneratePlanAction()
+        next_result = await action.generate_next_cycle(
             user_profile=plan.user_profile,
             macro_plan=plan.macro_plan,
             current_weeks_count=current_weeks_count
         )
+        
+        if not next_result.get("success"):
+            raise ValueError(next_result.get("error", "Generation failed"))
+        
+        next_weeks = next_result["data"]["weeks"]
         
         # Append next weeks to current weeks
         updated_weeks = list(plan.weeks)
@@ -373,7 +447,7 @@ async def update_plan_with_records(
 ):
     """
     Update plan based on workout records analysis.
-    Uses LangGraph agent with vector context for enhanced analysis.
+    Uses CoachAgent with vector context for enhanced analysis.
     Returns completion scores, analysis, and updated plan.
     """
     result = await db.execute(
@@ -387,10 +461,10 @@ async def update_plan_with_records(
     logger.info("Update plan with records", plan_id=str(plan_id))
     
     try:
-        agent_service = AgentService(db)
-        update_result = await agent_service.update_plan_with_records(
+        agent = CoachAgent(db)
+        update_result = await agent.update_from_records(
             plan_id=str(plan_id),
-            plan={
+            plan_data={
                 "weeks": plan.weeks,
                 "userProfile": plan.user_profile,
                 "startDate": plan.start_date.isoformat(),
@@ -399,11 +473,14 @@ async def update_plan_with_records(
             progress=request.progress,
         )
         
+        if not update_result.success:
+            raise ValueError(update_result.error or "Update failed")
+        
         return {
-            "completionScores": update_result["completionScores"],
-            "overallAnalysis": update_result["overallAnalysis"],
-            "adjustmentSummary": update_result.get("adjustmentSummary", ""),
-            "updatedWeeks": update_result["updatedWeeks"],
+            "completionScores": update_result.completion_scores,
+            "overallAnalysis": update_result.overall_analysis,
+            "adjustmentSummary": update_result.adjustment_summary or "",
+            "updatedWeeks": update_result.updated_weeks,
         }
         
     except ValueError as e:
@@ -423,7 +500,7 @@ async def confirm_update_from_analysis(
     Confirm and execute plan update after analysis suggestion.
     
     This endpoint is called when user confirms the update suggestion
-    from record analysis (Agent B -> Agent A coordination).
+    from record analysis.
     """
     result = await db.execute(
         select(TrainingPlan).where(TrainingPlan.id == plan_id)
@@ -436,31 +513,80 @@ async def confirm_update_from_analysis(
     logger.info("Confirm update from analysis", plan_id=str(plan_id))
     
     try:
-        agent_service = AgentService(db)
-        modification_result = await agent_service.handle_update_confirmation(
+        # Use modify_plan with the update suggestion as the user message
+        agent = CoachAgent(db)
+        
+        user_message = f"根据之前的训练分析建议，请帮我调整训练计划：\n\n{request.updateSuggestion}"
+        
+        modification_result = await agent.modify_plan(
             plan_id=str(plan_id),
             plan_data={
                 "weeks": plan.weeks,
                 "userProfile": plan.user_profile,
                 "startDate": plan.start_date.isoformat(),
             },
-            update_suggestion=request.updateSuggestion,
+            user_message=user_message,
             conversation_history=request.conversationHistory,
         )
         
         # If plan was updated, save to database
-        if modification_result.get("updatedPlan"):
-            plan.weeks = modification_result["updatedPlan"]
+        if modification_result.updated_weeks:
+            plan.weeks = modification_result.updated_weeks
             plan.updated_at = datetime.utcnow()
             await db.flush()
             logger.info("Plan updated from analysis confirmation", plan_id=str(plan_id))
         
         return ChatModifyResponse(
-            message=modification_result["message"],
-            updatedPlan=modification_result.get("updatedPlan"),
+            message=modification_result.message,
+            updatedPlan=modification_result.updated_weeks,
         )
         
     except Exception as e:
         logger.error("Confirm update error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/{plan_id}/export/ical")
+async def export_plan_to_ical(
+    plan_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export training plan to iCal (.ics) format.
+    
+    Downloads an iCal file that can be imported into
+    Google Calendar, Apple Calendar, Outlook, etc.
+    """
+    result = await db.execute(
+        select(TrainingPlan).where(TrainingPlan.id == plan_id)
+    )
+    plan = result.scalar_one_or_none()
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    
+    logger.info("Exporting plan to iCal", plan_id=str(plan_id))
+    
+    try:
+        export_service = ExportService()
+        
+        ical_content = export_service.export_to_ical(
+            plan_data={"weeks": plan.weeks},
+            start_date=plan.start_date,
+            calendar_name=f"训练计划 - {plan.user_profile.get('goal', '健身')}"
+        )
+        
+        filename = export_service.get_ical_filename(str(plan_id))
+        content_type = export_service.get_ical_content_type()
+        
+        return Response(
+            content=ical_content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+        
+    except Exception as e:
+        logger.error("iCal export error", error=str(e))
+        raise HTTPException(status_code=500, detail="导出失败，请重试")

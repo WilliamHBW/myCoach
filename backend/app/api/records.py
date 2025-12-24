@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models.record import WorkoutRecord
-from app.services.ai import AIService, AgentService
+from app.services.agent import CoachAgent
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -234,7 +234,6 @@ async def batch_delete_records(
     logger.info("Batch deleting workout records", count=len(request.ids))
     
     # Notify sync server for each record
-    # (Doing this sequentially for simplicity, but could be batched if intervals-server supported it)
     async with httpx.AsyncClient() as client:
         for record_id in request.ids:
             try:
@@ -268,7 +267,7 @@ async def analyze_record(
     """
     Analyze a workout record using AI with context awareness.
     
-    Uses LangGraph agent with vector context for enhanced analysis.
+    Uses CoachAgent with vector context for enhanced analysis.
     May suggest plan updates based on analysis results.
     """
     result = await db.execute(
@@ -282,8 +281,8 @@ async def analyze_record(
     logger.info("Analyzing record", record_id=str(record_id))
     
     try:
-        agent_service = AgentService(db)
-        analysis_result = await agent_service.analyze_workout_record(
+        agent = CoachAgent(db)
+        analysis_result = await agent.analyze_record(
             plan_id=str(record.plan_id) if record.plan_id else None,
             record_id=str(record_id),
             record_data={
@@ -296,14 +295,14 @@ async def analyze_record(
         )
         
         # Save analysis to database
-        analysis_text = analysis_result.get("analysis", "")
+        analysis_text = analysis_result.analysis or ""
         record.analysis = analysis_text
         await db.flush()
         
         logger.info(
             "Record analyzed",
             record_id=str(record_id),
-            suggest_update=analysis_result.get("suggestUpdate", False)
+            suggest_update=analysis_result.suggest_update
         )
         
         return AnalyzeRecordResponse(
@@ -312,11 +311,10 @@ async def analyze_record(
             planId=str(record.plan_id) if record.plan_id else None,
             data=record.data,
             analysis=record.analysis,
-            suggestUpdate=analysis_result.get("suggestUpdate", False),
-            updateSuggestion=analysis_result.get("updateSuggestion"),
+            suggestUpdate=analysis_result.suggest_update,
+            updateSuggestion=analysis_result.update_suggestion,
         )
         
     except Exception as e:
         logger.error("Analysis error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
