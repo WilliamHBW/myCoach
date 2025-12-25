@@ -32,7 +32,6 @@ class ActionRouter:
         self.register(ActionType.GENERATE_PLAN.value, GeneratePlanAction())
         self.register(ActionType.MODIFY_PLAN.value, ModifyPlanAction())
         self.register(ActionType.ANALYZE_RECORD.value, AnalyzeRecordAction())
-        self.register(ActionType.UPDATE_FROM_RECORDS.value, AnalyzeRecordAction())
     
     def register(self, action_type: str, action: BaseAction) -> None:
         """
@@ -79,11 +78,8 @@ class ActionRouter:
             return action
         
         # Fallback: try to infer action from state content
-        if state.get("record_data") and not state.get("completion_data"):
+        if state.get("record_data"):
             return ActionType.ANALYZE_RECORD.value
-        
-        if state.get("completion_data"):
-            return ActionType.UPDATE_FROM_RECORDS.value
         
         if state.get("user_message") and state.get("plan_data"):
             return ActionType.MODIFY_PLAN.value
@@ -107,10 +103,6 @@ class ActionRouter:
         action = self.get_action(action_type)
         
         logger.info(f"Routing to action: {action_type}")
-        
-        # Handle special cases for AnalyzeRecordAction
-        if action_type == ActionType.UPDATE_FROM_RECORDS.value:
-            return await action.execute_update_from_records(state)
         
         return await action.execute(state)
 

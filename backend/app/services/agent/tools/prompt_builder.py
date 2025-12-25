@@ -164,44 +164,8 @@ class PromptBuilder:
         Returns:
             Tuple of (system_prompt, user_prompt)
         """
-        # Enhanced analysis prompt that can suggest plan updates
-        enhanced_prompt = """你现在需要执行"训练审核"任务。
-
-### 分析逻辑
-1. **依从性检查**：用户是否完成了预定组数/时长？
-2. **强度评估**：根据心率区间和RPE，判断训练是"有效刺激"还是"过度疲劳"
-3. **调整策略**：
-   - 如果连续三周RPE过高（≥9），则触发"减载周（Deload Week）"建议
-   - 如果心率适应良好且RPE合理，则建议增加5%负荷
-   - 如果完成度低于80%，分析原因并调整计划难度
-
-### 输出格式
-请用简洁、专业、鼓励性的语言回复，包含：
-
-1. **训练评估**（2-3句话）
-   - 完成情况总结
-   - 强度适宜性判断
-
-2. **身体反馈解读**（1-2句话）
-   - 根据RPE和心率分析恢复状态
-
-3. **专业建议**（2-3条具体建议）
-   - 下一次训练的调整方向
-   - 恢复和营养建议（如适用）
-
-4. **激励语**（1句话）
-   - 正向鼓励，保持训练动力
-
-5. **计划调整建议**（可选）
-   如果基于本次训练分析，你认为需要调整训练计划，请在回复末尾添加：
-   
-   ---SUGGEST_UPDATE---
-   简要说明为什么建议调整计划，以及建议的调整方向。
-   ---END_SUGGEST_UPDATE---
-
-请用中文回复，语气专业但亲切。"""
         
-        system = f"{self.system_prompt}\n\n{enhanced_prompt}"
+        system = f"{self.system_prompt}\n\n{PERFORMANCE_ANALYSIS_PROMPT}"
         
         if context:
             system += f"\n\n### 相关训练历史\n{context}"

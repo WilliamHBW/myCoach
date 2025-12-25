@@ -13,7 +13,6 @@ class ActionType(str, Enum):
     GENERATE_PLAN = "generate_plan"
     MODIFY_PLAN = "modify_plan"
     ANALYZE_RECORD = "analyze_record"
-    UPDATE_FROM_RECORDS = "update_from_records"
 
 
 class AgentState(TypedDict, total=False):
@@ -37,10 +36,6 @@ class AgentState(TypedDict, total=False):
     # Conversation context
     user_message: str
     conversation_history: List[dict[str, str]]
-    
-    # Completion data (for update from records)
-    completion_data: Optional[dict[str, Any]]
-    progress: Optional[dict[str, Any]]
     
     # Memory context
     long_term_context: str
@@ -85,10 +80,6 @@ class AgentRequest:
     record_id: Optional[str] = None
     record_data: Optional[dict[str, Any]] = None
     
-    # For update from records
-    completion_data: Optional[dict[str, Any]] = None
-    progress: Optional[dict[str, Any]] = None
-    
     # Options
     stream: bool = False
 
@@ -107,11 +98,6 @@ class AgentResponse:
     analysis: Optional[str] = None
     suggest_update: bool = False
     update_suggestion: Optional[str] = None
-    
-    # For update from records
-    completion_scores: Optional[List[dict[str, Any]]] = None
-    overall_analysis: Optional[str] = None
-    adjustment_summary: Optional[str] = None
     
     # Error
     error: Optional[str] = None
@@ -135,15 +121,6 @@ class AgentResponse:
         if self.suggest_update:
             result["suggestUpdate"] = True
             result["updateSuggestion"] = self.update_suggestion
-        
-        if self.completion_scores is not None:
-            result["completionScores"] = self.completion_scores
-        
-        if self.overall_analysis is not None:
-            result["overallAnalysis"] = self.overall_analysis
-        
-        if self.adjustment_summary is not None:
-            result["adjustmentSummary"] = self.adjustment_summary
         
         if self.error is not None:
             result["error"] = self.error
@@ -187,8 +164,6 @@ def create_initial_state(request: AgentRequest) -> AgentState:
         record_data=request.record_data,
         user_message=request.user_message or "",
         conversation_history=request.conversation_history or [],
-        completion_data=request.completion_data,
-        progress=request.progress,
         long_term_context="",
         working_context={},
         user_preferences={},

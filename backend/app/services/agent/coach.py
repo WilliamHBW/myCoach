@@ -205,11 +205,8 @@ class CoachAgent:
     
     def _get_routing_reasoning(self, state: AgentState, action: str) -> str:
         """Generate reasoning for action routing."""
-        if state.get("record_data") and not state.get("completion_data"):
-            return "Record data present without completion data -> analyze single record"
-        
-        if state.get("completion_data"):
-            return "Completion data present -> update plan from records"
+        if state.get("record_data"):
+            return "Record data present -> analyze single record"
         
         if state.get("user_message") and state.get("plan_data"):
             return "User message with existing plan -> modify plan through chat"
@@ -433,14 +430,6 @@ class CoachAgent:
                     )
                     updated_types.append("analysis")
             
-            # Store updated plan for update_from_records
-            elif action_type == ActionType.UPDATE_FROM_RECORDS.value:
-                if state.get("updated_plan"):
-                    plan_data = state.get("plan_data", {})
-                    plan_data["weeks"] = state["updated_plan"]
-                    await self.memory.store_plan_context(plan_id, plan_data)
-                    updated_types.append("plan_context")
-            
             # Store generated plan
             elif action_type == ActionType.GENERATE_PLAN.value:
                 if state.get("updated_plan"):
@@ -566,10 +555,6 @@ class CoachAgent:
             record_type = request.record_data.get("type", "") if request.record_data else ""
             parts.append(f"Analyze {record_type} workout record")
         
-        elif request.action == ActionType.UPDATE_FROM_RECORDS:
-            days = request.completion_data.get("daysWithRecords", 0) if request.completion_data else 0
-            parts.append(f"Update plan based on {days} days of records")
-        
         return " | ".join(parts) if parts else "Processing request"
     
     def _get_response_summary(self, state: AgentState) -> str:
@@ -668,13 +653,6 @@ class CoachAgent:
             response.suggest_update = state.get("suggest_update", False)
             response.update_suggestion = state.get("update_suggestion")
         
-        elif action == ActionType.UPDATE_FROM_RECORDS:
-            tool_results = state.get("tool_results", {})
-            response.completion_scores = tool_results.get("completionScores")
-            response.overall_analysis = tool_results.get("overallAnalysis")
-            response.adjustment_summary = tool_results.get("adjustmentSummary")
-            response.updated_weeks = tool_results.get("updatedWeeks")
-        
         return response
     
     # ========================================
@@ -762,37 +740,6 @@ class CoachAgent:
             plan_id=plan_id,
             record_id=record_id,
             record_data=record_data,
-        )
-        return await self.execute(request)
-    
-    async def update_from_records(
-        self,
-        plan_id: str,
-        plan_data: Dict[str, Any],
-        completion_data: Dict[str, Any],
-        progress: Dict[str, Any],
-        session_id: Optional[str] = None
-    ) -> AgentResponse:
-        """
-        Update plan based on workout records.
-        
-        Args:
-            plan_id: Plan ID
-            plan_data: Current plan data
-            completion_data: Completion analysis
-            progress: Current progress
-            session_id: Optional session ID
-            
-        Returns:
-            AgentResponse with updated plan
-        """
-        request = AgentRequest(
-            action=ActionType.UPDATE_FROM_RECORDS,
-            session_id=session_id or str(uuid.uuid4()),
-            plan_id=plan_id,
-            plan_data=plan_data,
-            completion_data=completion_data,
-            progress=progress,
         )
         return await self.execute(request)
     

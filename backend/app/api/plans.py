@@ -46,20 +46,6 @@ class ChatModifyRequest(BaseModel):
     stream: bool = Field(default=False, description="Enable streaming response")
 
 
-class ConfirmUpdateRequest(BaseModel):
-    """Request to confirm plan update after analysis suggestion."""
-    updateSuggestion: str = Field(..., description="The update suggestion from analysis")
-    conversationHistory: list[dict[str, str]] = Field(
-        default=[], description="Previous chat messages"
-    )
-
-
-class UpdateWithRecordsRequest(BaseModel):
-    """Request to update plan based on workout records."""
-    completionData: dict[str, Any] = Field(..., description="Completion analysis data")
-    progress: dict[str, Any] = Field(..., description="Current plan progress")
-
-
 class PlanResponse(BaseModel):
     """Training plan response."""
     id: str
@@ -437,113 +423,6 @@ async def generate_next_cycle_api(
     except Exception as e:
         logger.error("Next cycle generation error", error=str(e))
         raise HTTPException(status_code=500, detail=f"生成下一阶段失败: {str(e)}")
-
-
-@router.post("/{plan_id}/update", response_model=dict)
-async def update_plan_with_records(
-    plan_id: UUID,
-    request: UpdateWithRecordsRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Update plan based on workout records analysis.
-    Uses CoachAgent with vector context for enhanced analysis.
-    Returns completion scores, analysis, and updated plan.
-    """
-    result = await db.execute(
-        select(TrainingPlan).where(TrainingPlan.id == plan_id)
-    )
-    plan = result.scalar_one_or_none()
-    
-    if not plan:
-        raise HTTPException(status_code=404, detail="计划不存在")
-    
-    logger.info("Update plan with records", plan_id=str(plan_id))
-    
-    try:
-        agent = CoachAgent(db)
-        update_result = await agent.update_from_records(
-            plan_id=str(plan_id),
-            plan_data={
-                "weeks": plan.weeks,
-                "userProfile": plan.user_profile,
-                "startDate": plan.start_date.isoformat(),
-            },
-            completion_data=request.completionData,
-            progress=request.progress,
-        )
-        
-        if not update_result.success:
-            raise ValueError(update_result.error or "Update failed")
-        
-        return {
-            "completionScores": update_result.completion_scores,
-            "overallAnalysis": update_result.overall_analysis,
-            "adjustmentSummary": update_result.adjustment_summary or "",
-            "updatedWeeks": update_result.updated_weeks,
-        }
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Update with records error", error=str(e))
-        raise HTTPException(status_code=500, detail="分析失败，请重试")
-
-
-@router.post("/{plan_id}/confirm-update", response_model=ChatModifyResponse)
-async def confirm_update_from_analysis(
-    plan_id: UUID,
-    request: ConfirmUpdateRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Confirm and execute plan update after analysis suggestion.
-    
-    This endpoint is called when user confirms the update suggestion
-    from record analysis.
-    """
-    result = await db.execute(
-        select(TrainingPlan).where(TrainingPlan.id == plan_id)
-    )
-    plan = result.scalar_one_or_none()
-    
-    if not plan:
-        raise HTTPException(status_code=404, detail="计划不存在")
-    
-    logger.info("Confirm update from analysis", plan_id=str(plan_id))
-    
-    try:
-        # Use modify_plan with the update suggestion as the user message
-        agent = CoachAgent(db)
-        
-        user_message = f"根据之前的训练分析建议，请帮我调整训练计划：\n\n{request.updateSuggestion}"
-        
-        modification_result = await agent.modify_plan(
-            plan_id=str(plan_id),
-            plan_data={
-                "weeks": plan.weeks,
-                "userProfile": plan.user_profile,
-                "startDate": plan.start_date.isoformat(),
-            },
-            user_message=user_message,
-            conversation_history=request.conversationHistory,
-        )
-        
-        # If plan was updated, save to database
-        if modification_result.updated_weeks:
-            plan.weeks = modification_result.updated_weeks
-            plan.updated_at = datetime.utcnow()
-            await db.flush()
-            logger.info("Plan updated from analysis confirmation", plan_id=str(plan_id))
-        
-        return ChatModifyResponse(
-            message=modification_result.message,
-            updatedPlan=modification_result.updated_weeks,
-        )
-        
-    except Exception as e:
-        logger.error("Confirm update error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{plan_id}/export/ical")

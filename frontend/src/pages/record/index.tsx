@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecordStore, WorkoutRecord } from '../../store/useRecordStore'
 import { usePlanStore } from '../../store/usePlanStore'
-import { planApi, PlanUpdateResult } from '../../services/api'
 import { showToast, showLoading, hideLoading, showConfirm } from '../../utils/ui'
 import { RECORD_FIELDS, PRO_DATA_FIELDS, PRO_DATA_SPORTS, ProDataSport, ParsedProData, getIntervalColumnInfo } from '../../constants/recordFields'
-import { getCompletionData, getCurrentProgress } from '../../utils/planDateMatcher'
+import { ChatDialog } from '../../components/ChatDialog'
 import './index.scss'
 
 // 专业数据展示组件
@@ -119,13 +118,8 @@ function ProDataDisplay({ proData, sportType }: { proData: ParsedProData; sportT
 export default function RecordList() {
   const navigate = useNavigate()
   const { records, fetchRecords, analyzeRecord, deleteRecord, updateRecord, batchDeleteRecords } = useRecordStore()
-  const { currentPlan, updatePlanWeeks } = usePlanStore()
+  const { currentPlan } = usePlanStore()
   
-  // 更新训练弹窗状态
-  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
-  const [updateResult, setUpdateResult] = useState<PlanUpdateResult | null>(null)
-  const [isUpdating, setIsUpdating] = useState(false)
-
   // 多选状态
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -134,6 +128,9 @@ export default function RecordList() {
   const [editingRecord, setEditingRecord] = useState<WorkoutRecord | null>(null)
   const [editFormData, setEditFormData] = useState<Record<string, any>>({})
   const [isSaving, setIsSaving] = useState(false)
+
+  // 对话框状态
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   // 初始化时从后端获取记录
   useEffect(() => {
@@ -164,66 +161,6 @@ export default function RecordList() {
       hideLoading()
       showToast(e.message || '分析失败，请重试', 'error')
     }
-  }
-
-  // 更新训练计划
-  const handleUpdatePlan = async () => {
-    if (!currentPlan) {
-      showConfirm({
-        title: '暂无训练计划',
-        content: '您还没有创建训练计划，是否现在创建？',
-        confirmText: '去创建',
-        onConfirm: () => navigate('/plan/questionnaire')
-      })
-      return
-    }
-
-    // 转换记录格式以匹配 planDateMatcher 的期望
-    const recordsForMatcher = records.map(r => ({
-      id: r.id,
-      createdAt: r.createdAt,
-      data: r.data,
-      analysis: r.analysis
-    }))
-
-    // 检查计划周期内是否有记录
-    const completionData = getCompletionData(currentPlan as any, recordsForMatcher as any)
-    if (completionData.daysWithRecords === 0) {
-      showToast('计划周期内暂无运动记录', 'error')
-      return
-    }
-
-    setIsUpdating(true)
-    showLoading('AI 教练正在分析您的训练数据...')
-
-    try {
-      const progress = getCurrentProgress(currentPlan as any)
-      const result = await planApi.updateWithRecords(currentPlan.id, completionData, progress)
-      setUpdateResult(result)
-      setShowUpdateDialog(true)
-      hideLoading()
-    } catch (e: any) {
-      hideLoading()
-      showToast(e.message || '分析失败，请重试', 'error')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  // 应用更新
-  const handleApplyUpdate = () => {
-    if (!updateResult) return
-    
-    updatePlanWeeks(updateResult.updatedWeeks)
-    setShowUpdateDialog(false)
-    setUpdateResult(null)
-    showToast('训练计划已更新', 'success')
-  }
-
-  // 关闭弹窗
-  const handleCloseDialog = () => {
-    setShowUpdateDialog(false)
-    setUpdateResult(null)
   }
 
   // 删除运动记录
@@ -582,86 +519,24 @@ export default function RecordList() {
         </div>
       )}
 
-      {/* 更新计划悬浮按钮 */}
-      <button 
-        className={`update-plan-fab ${isUpdating ? 'loading' : ''}`}
-        onClick={handleUpdatePlan}
-        disabled={isUpdating}
-        title="基于运动记录更新训练计划"
-      >
-        <span className='fab-icon'>🔄</span>
-        <span className='fab-text'>更新计划</span>
-      </button>
-
-      {/* 更新结果弹窗 */}
-      {showUpdateDialog && updateResult && (
-        <div className='update-dialog-overlay' onClick={handleCloseDialog}>
-          <div className='update-dialog' onClick={e => e.stopPropagation()}>
-            <div className='dialog-header'>
-              <h3>📊 训练计划分析与更新</h3>
-              <button className='close-btn' onClick={handleCloseDialog}>✕</button>
-            </div>
-
-            <div className='dialog-content'>
-              {/* 完成度表格 */}
-              <div className='section completion-section'>
-                <h4>✅ 训练完成度评估</h4>
-                <div className='completion-table-wrapper'>
-                  <table className='completion-table'>
-                    <thead>
-                      <tr>
-                        <th>周</th>
-                        <th>日</th>
-                        <th>完成度</th>
-                        <th>评价</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {updateResult.completionScores.map((score, idx) => (
-                        <tr key={idx}>
-                          <td>第{score.weekNumber}周</td>
-                          <td>{score.day}</td>
-                          <td>
-                            <span className={`score-badge ${getScoreClass(score.score)}`}>
-                              {score.score}分
-                            </span>
-                          </td>
-                          <td className='reason-cell'>{score.reason}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* 整体分析 */}
-              <div className='section analysis-section'>
-                <h4>📈 整体分析</h4>
-                <p className='analysis-text'>{updateResult.overallAnalysis}</p>
-              </div>
-
-              {/* 调整说明 */}
-              {updateResult.adjustmentSummary && (
-                <div className='section adjustment-section'>
-                  <h4>🔧 计划调整说明</h4>
-                  <p className='adjustment-text'>{updateResult.adjustmentSummary}</p>
-                </div>
-              )}
-            </div>
-
-            <div className='dialog-footer'>
-              <button className='btn cancel' onClick={handleCloseDialog}>
-                暂不更新
-              </button>
-              <button className='btn apply' onClick={handleApplyUpdate}>
-                ✓ 应用更新
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* 智能助手悬浮按钮 - 只有有记录时才显示 */}
+      {records.length > 0 && (
+        <button 
+          className={`chat-fab ${isChatOpen ? 'hidden' : ''}`}
+          onClick={() => setIsChatOpen(true)}
+          title="咨询 AI 教练"
+        >
+          <span className='fab-icon'>💬</span>
+          <span className='fab-text'>AI 助手</span>
+        </button>
       )}
 
-      {/* 编辑记录模态框 */}
+      {/* 对话框 */}
+      <ChatDialog 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
+
       {editingRecord && (
         <div className='edit-dialog-overlay' onClick={handleCloseEdit}>
           <div className='edit-dialog' onClick={e => e.stopPropagation()}>

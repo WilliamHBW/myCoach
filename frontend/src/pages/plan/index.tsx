@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePlanStore } from '../../store/usePlanStore'
 import { planApi } from '../../services/api'
-import { generateICS } from '../../utils/calendar'
 import { showToast, showConfirm, showLoading, hideLoading } from '../../utils/ui'
+import { ChatDialog } from '../../components/ChatDialog'
+import { generateICS } from '../../utils/calendar'
 import './index.scss'
 
 // 星期几对应的索引（周一为起点）
@@ -100,7 +101,7 @@ interface ChatMessage {
 
 export default function Plan() {
   const navigate = useNavigate()
-  const { currentPlan, clearPlan, updatePlanWeeks, fetchPlans, generateNextCycle, isLoading: isStoreLoading } = usePlanStore()
+  const { currentPlan, clearPlan, fetchPlans, generateNextCycle, isLoading: isStoreLoading } = usePlanStore()
   const [activeWeek, setActiveWeek] = useState(0)
   
   // 计算训练进度 - 移到所有早期返回之前以遵守 Hooks 规则
@@ -111,12 +112,6 @@ export default function Plan() {
   
   // 对话框状态
   const [isChatOpen, setIsChatOpen] = useState(false)
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [inputMessage, setInputMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [pendingUpdate, setPendingUpdate] = useState<any[] | null>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // 初始化时从后端获取计划
   useEffect(() => {
@@ -124,20 +119,6 @@ export default function Plan() {
       // Ignore error on initial fetch
     })
   }, [])
-
-  // 自动滚动到最新消息
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [chatMessages])
-
-  // 打开对话框时聚焦输入框
-  useEffect(() => {
-    if (isChatOpen && inputRef.current) {
-      inputRef.current.focus()
-    }
-  }, [isChatOpen])
 
   const handleDelete = () => {
     if (!currentPlan) return
@@ -149,7 +130,6 @@ export default function Plan() {
         try {
           await planApi.delete(currentPlan.id)
           clearPlan()
-          setChatMessages([])
           showToast('已删除', 'success')
         } catch (e: any) {
           showToast(e.message || '删除失败', 'error')
@@ -163,7 +143,21 @@ export default function Plan() {
   }
 
   const handleExport = () => {
-    // ... existing export code
+    if (!currentPlan) return
+    
+    try {
+      const ics = generateICS(currentPlan as any, currentPlan.startDate)
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.setAttribute('download', `training_plan_${currentPlan.id}.ics`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      showToast('已生成日历文件，请在手机或电脑日历中打开导入', 'success')
+    } catch (e: any) {
+      showToast('导出失败，请重试', 'error')
+    }
   }
 
   const handleNextCycle = async () => {
@@ -181,73 +175,7 @@ export default function Plan() {
   }
 
   const handleOpenChat = () => {
-    // 首次打开时添加欢迎消息
-    if (chatMessages.length === 0) {
-      setChatMessages([{
-        role: 'assistant',
-        content: '👋 你好！我是你的 AI 教练。你可以告诉我想如何调整训练计划，比如：\n\n• "我这周膝盖有点不舒服，能减少腿部训练吗？"\n• "能把周三的训练改到周四吗？"\n• "我想增加一些核心训练"\n• "第二周的强度能降低一点吗？"\n\n请告诉我你的需求！'
-      }])
-    }
     setIsChatOpen(true)
-  }
-
-  const handleClearChat = () => {
-    setChatMessages([])
-    setPendingUpdate(null)
-    showToast('对话已清理', 'success')
-  }
-
-  const handleSyncPlan = async () => {
-    if (!pendingUpdate) return
-    
-    try {
-      await updatePlanWeeks(pendingUpdate)
-      setPendingUpdate(null)
-      showToast('训练计划同步成功', 'success')
-    } catch (e: any) {
-      showToast(e.message || '同步失败', 'error')
-    }
-  }
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading || !currentPlan) return
-
-    const userMessage = inputMessage.trim()
-    setInputMessage('')
-    
-    // 添加用户消息
-    const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', content: userMessage }]
-    setChatMessages(newMessages)
-    
-    setIsLoading(true)
-
-    try {
-      const result = await planApi.chat(currentPlan.id, userMessage, chatMessages)
-      
-      // 添加 AI 回复
-      setChatMessages(prev => [...prev, { role: 'assistant', content: result.message }])
-      
-      // 如果有计划更新，存入待同步状态
-      if (result.updatedPlan) {
-        setPendingUpdate(result.updatedPlan)
-        showToast('AI 已建议修改计划，请点击“同步计划”查看', 'success')
-      }
-      
-    } catch (error: any) {
-      setChatMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `❌ 抱歉，处理请求时出错了：${error.message || '请重试'}` 
-      }])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
   }
 
   if (!currentPlan) {
@@ -427,77 +355,10 @@ export default function Plan() {
       </button>
 
       {/* 对话框 */}
-      {isChatOpen && (
-        <div className='chat-dialog'>
-          <div className='chat-header'>
-            <div className='chat-title'>
-              <span className='chat-icon'>🏋️</span>
-              <span>AI 教练 · 修改计划</span>
-            </div>
-            <button className='chat-close' onClick={() => setIsChatOpen(false)}>
-              ✕
-            </button>
-          </div>
-
-          <div className='chat-toolbar'>
-            <button className='toolbar-btn clear' onClick={handleClearChat}>
-              🗑️ 清理对话
-            </button>
-            <button 
-              className={`toolbar-btn sync ${pendingUpdate ? 'active' : ''}`} 
-              onClick={handleSyncPlan}
-              disabled={!pendingUpdate}
-            >
-              🔄 同步计划
-            </button>
-          </div>
-          
-          <div className='chat-messages'>
-            {chatMessages.map((msg, index) => (
-              <div key={index} className={`chat-message ${msg.role}`}>
-                <div className='message-content'>
-                  {msg.content.split('\n').map((line, i) => (
-                    <span key={i}>
-                      {line}
-                      {i < msg.content.split('\n').length - 1 && <br />}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className='chat-message assistant'>
-                <div className='message-content loading'>
-                  <span className='typing-dot'></span>
-                  <span className='typing-dot'></span>
-                  <span className='typing-dot'></span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-          
-          <div className='chat-input-area'>
-            <textarea
-              ref={inputRef}
-              className='chat-input'
-              placeholder='告诉我你想如何调整计划...'
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isLoading}
-              rows={1}
-            />
-            <button 
-              className='chat-send'
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading}
-            >
-              发送
-            </button>
-          </div>
-        </div>
-      )}
+      <ChatDialog 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
     </div>
   )
 }
