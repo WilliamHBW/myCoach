@@ -7,11 +7,13 @@ Modules:
 - memory: Three-layer memory management
 - context: Vector storage for semantic search
 - external: External service integrations
+- analytics: Workout data processing and statistics
 """
 # Main exports for convenience
 from app.services.agent import CoachAgent, AgentRequest, AgentResponse, ActionType
 from app.services.memory import MemoryManager
 from app.services.adapter import get_ai_adapter
+from app.services.analytics import StatsCalculator
 
 __all__ = [
     "CoachAgent",
@@ -20,4 +22,5 @@ __all__ = [
     "ActionType",
     "MemoryManager",
     "get_ai_adapter",
+    "StatsCalculator",
 ]

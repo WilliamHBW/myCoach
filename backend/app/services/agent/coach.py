@@ -49,7 +49,7 @@ class CoachAgent:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.memory = MemoryManager(db)
-        self.router = ActionRouter()
+        self.router = ActionRouter(db=db)  # Pass db for actions that need it
         
         # Initialize tools
         self._tools = {

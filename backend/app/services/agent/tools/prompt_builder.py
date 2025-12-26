@@ -155,7 +155,7 @@ class PromptBuilder:
         context: str = ""
     ) -> tuple[str, str]:
         """
-        Build prompts for single record analysis.
+        Build prompts for single record analysis (legacy, without stats).
         
         Args:
             record_data: Workout record data
@@ -194,6 +194,315 @@ class PromptBuilder:
 """
         
         return system, user
+    
+    def build_analyze_with_stats_prompt(
+        self,
+        record_data: dict[str, Any],
+        level1_stats: dict[str, Any],
+        level2_stats: dict[str, Any],
+        level3_stats: dict[str, Any],
+        activity_type: str,
+        data_quality_score: float,
+        context: str = ""
+    ) -> tuple[str, str]:
+        """
+        Build prompts for record analysis with layered statistics.
+        
+        This is the primary method for analyzing records with computed stats.
+        
+        Args:
+            record_data: Original workout record data
+            level1_stats: Basic summary statistics
+            level2_stats: Interval/segment statistics
+            level3_stats: Event statistics
+            activity_type: Type of activity (cycling, running, strength)
+            data_quality_score: Quality score of the data (0-1)
+            context: Additional context from memory
+            
+        Returns:
+            Tuple of (system_prompt, user_prompt)
+        """
+        system = f"{self.system_prompt}\n\n{PERFORMANCE_ANALYSIS_PROMPT}"
+        
+        if context:
+            system += f"\n\n### 相关训练历史\n{context}"
+        
+        # Format user prompt with layered statistics
+        user = self._format_layered_stats_prompt(
+            record_data=record_data,
+            level1_stats=level1_stats,
+            level2_stats=level2_stats,
+            level3_stats=level3_stats,
+            activity_type=activity_type,
+            data_quality_score=data_quality_score
+        )
+        
+        return system, user
+    
+    def _format_layered_stats_prompt(
+        self,
+        record_data: dict[str, Any],
+        level1_stats: dict[str, Any],
+        level2_stats: dict[str, Any],
+        level3_stats: dict[str, Any],
+        activity_type: str,
+        data_quality_score: float
+    ) -> str:
+        """Format layered statistics into user prompt."""
+        lines = []
+        
+        # Header
+        lines.append("## 运动记录分析数据")
+        lines.append("")
+        lines.append(f"**运动类型:** {self._translate_activity_type(activity_type)}")
+        lines.append(f"**数据质量:** {self._format_quality_score(data_quality_score)}")
+        lines.append("")
+        
+        # User notes if available
+        if record_data.get("notes"):
+            lines.append(f'**用户备注:** "{record_data["notes"]}"')
+            lines.append("")
+        
+        # Level 1: Basic Statistics
+        lines.append("---")
+        lines.append("### Level 1: 基础统计")
+        lines.append("")
+        lines.extend(self._format_level1_stats(level1_stats, activity_type))
+        lines.append("")
+        
+        # Level 2: Interval Statistics
+        lines.append("---")
+        lines.append("### Level 2: 区间统计")
+        lines.append("")
+        lines.extend(self._format_level2_stats(level2_stats, activity_type))
+        lines.append("")
+        
+        # Level 3: Event Statistics
+        lines.append("---")
+        lines.append("### Level 3: 事件统计")
+        lines.append("")
+        lines.extend(self._format_level3_stats(level3_stats))
+        lines.append("")
+        
+        # Analysis request
+        lines.append("---")
+        lines.append("")
+        lines.append("请基于以上三层统计数据，对本次训练进行专业分析。")
+        
+        return "\n".join(lines)
+    
+    def _translate_activity_type(self, activity_type: str) -> str:
+        """Translate activity type to Chinese."""
+        translations = {
+            "cycling": "骑行",
+            "running": "跑步",
+            "strength": "力量训练",
+            "swimming": "游泳",
+            "other": "其他"
+        }
+        return translations.get(activity_type, activity_type)
+    
+    def _format_quality_score(self, score: float) -> str:
+        """Format quality score with description."""
+        if score >= 0.8:
+            return f"{score:.1%} (数据充分)"
+        elif score >= 0.5:
+            return f"{score:.1%} (数据一般)"
+        else:
+            return f"{score:.1%} (数据不完整)"
+    
+    def _format_level1_stats(self, stats: dict[str, Any], activity_type: str) -> List[str]:
+        """Format Level 1 statistics."""
+        lines = []
+        
+        # Duration
+        if "duration_min" in stats:
+            lines.append(f"- **时长:** {stats['duration_min']} 分钟")
+        
+        # Heart rate
+        if "avg_hr" in stats:
+            hr_line = f"- **平均心率:** {stats['avg_hr']} bpm"
+            if "max_hr" in stats:
+                hr_line += f" (最大: {stats['max_hr']} bpm)"
+            lines.append(hr_line)
+        
+        # Power (cycling)
+        if activity_type == "cycling":
+            if "avg_power" in stats:
+                power_line = f"- **平均功率:** {stats['avg_power']} W"
+                if "normalized_power" in stats:
+                    power_line += f" (标准化: {stats['normalized_power']} W)"
+                lines.append(power_line)
+            
+            if "power_hr_ratio" in stats:
+                lines.append(f"- **功率心率比:** {stats['power_hr_ratio']}")
+        
+        # Pace (running)
+        if activity_type == "running":
+            if "avg_pace" in stats:
+                lines.append(f"- **平均配速:** {stats['avg_pace']:.2f} min/km")
+            if "distance_km" in stats:
+                lines.append(f"- **距离:** {stats['distance_km']:.2f} km")
+        
+        # HR drift
+        if "hr_drift_pct" in stats:
+            drift = stats['hr_drift_pct']
+            drift_status = "正常" if abs(drift) < 5 else ("偏高" if drift > 0 else "异常")
+            lines.append(f"- **心率漂移:** {drift:.1f}% ({drift_status})")
+        
+        # TSS
+        if "tss" in stats:
+            tss = stats['tss']
+            tss_level = self._categorize_tss(tss)
+            lines.append(f"- **训练压力得分 (TSS):** {tss:.1f} ({tss_level})")
+        
+        # RPE
+        if "rpe_reported" in stats:
+            lines.append(f"- **主观疲劳度 (RPE):** {stats['rpe_reported']}/10")
+        
+        # Completion rate
+        if stats.get("completion_rate") is not None:
+            lines.append(f"- **完成率:** {stats['completion_rate']:.1f}%")
+        
+        # Strength specific
+        if activity_type == "strength" and "total_sets" in stats:
+            lines.append(f"- **总组数:** {stats['total_sets']}")
+        
+        if not lines:
+            lines.append("_无可用数据_")
+        
+        return lines
+    
+    def _categorize_tss(self, tss: float) -> str:
+        """Categorize TSS level."""
+        if tss < 50:
+            return "轻松"
+        elif tss < 100:
+            return "中等"
+        elif tss < 150:
+            return "较高"
+        elif tss < 200:
+            return "高强度"
+        else:
+            return "极高"
+    
+    def _format_level2_stats(self, stats: dict[str, Any], activity_type: str) -> List[str]:
+        """Format Level 2 statistics."""
+        lines = []
+        
+        intervals = stats.get("intervals", [])
+        
+        if intervals:
+            lines.append(f"**区间数量:** {len(intervals)}")
+            lines.append("")
+            
+            # Interval details (limit to first 5)
+            lines.append("| 区间 | 类型 | 时长 | 功率/配速 | 心率 |")
+            lines.append("|------|------|------|-----------|------|")
+            
+            for i, interval in enumerate(intervals[:5]):
+                idx = i + 1
+                int_type = interval.get("type", "-")
+                duration = f"{interval.get('duration_sec', 0) // 60}m"
+                
+                # Power or pace
+                if "avg_power" in interval:
+                    metric = f"{interval['avg_power']}W"
+                elif "avg_pace" in interval:
+                    metric = f"{interval['avg_pace']:.2f}min/km"
+                else:
+                    metric = "-"
+                
+                hr = f"{interval.get('avg_hr', '-')}"
+                
+                lines.append(f"| {idx} | {int_type} | {duration} | {metric} | {hr} |")
+            
+            if len(intervals) > 5:
+                lines.append(f"| ... | _还有 {len(intervals) - 5} 个区间_ | | | |")
+            
+            lines.append("")
+        
+        # Power/pace drop
+        if "power_drop_last_interval_pct" in stats:
+            drop = stats["power_drop_last_interval_pct"]
+            status = "正常" if drop < 5 else ("需关注" if drop < 10 else "明显疲劳")
+            lines.append(f"**末尾区间功率下降:** {drop:.1f}% ({status})")
+        
+        if "pace_drop_last_interval_pct" in stats:
+            drop = stats["pace_drop_last_interval_pct"]
+            status = "正常" if drop < 5 else ("需关注" if drop < 10 else "明显减速")
+            lines.append(f"**末尾区间配速下降:** {drop:.1f}% ({status})")
+        
+        # HR zone distribution (running)
+        if "hr_zone_distribution" in stats:
+            zones = stats["hr_zone_distribution"]
+            lines.append("")
+            lines.append("**心率区间分布:**")
+            for zone, pct in zones.items():
+                if pct > 0:
+                    lines.append(f"- {zone}: {pct:.1f}%")
+        
+        # Exercise counts (strength)
+        if "exercise_counts" in stats:
+            counts = stats["exercise_counts"]
+            lines.append("")
+            lines.append("**动作分布:**")
+            for exercise, count in counts.items():
+                lines.append(f"- {exercise}: {count} 组")
+        
+        if not lines:
+            lines.append("_无区间数据_")
+        
+        return lines
+    
+    def _format_level3_stats(self, stats: dict[str, Any]) -> List[str]:
+        """Format Level 3 statistics."""
+        lines = []
+        
+        events = stats.get("events", [])
+        
+        if not events:
+            lines.append("_本次训练未检测到显著事件_")
+            return lines
+        
+        lines.append(f"**检测到 {len(events)} 个事件:**")
+        lines.append("")
+        
+        for event in events:
+            event_type = event.get("event", "unknown")
+            timestamp = event.get("timestamp_min", 0)
+            
+            if event_type == "heart_rate_drift_start":
+                hr = event.get("hr_at_event", "?")
+                increase = event.get("hr_increase_pct", "?")
+                lines.append(f"⚠️ **心率漂移开始** @ {timestamp:.1f}min")
+                lines.append(f"   - 心率: {hr} bpm, 上升幅度: {increase}%")
+            
+            elif event_type == "power_drop":
+                drop = event.get("drop_pct", "?")
+                power = event.get("power_at_event", "?")
+                lines.append(f"📉 **功率下降** @ {timestamp:.1f}min")
+                lines.append(f"   - 下降幅度: {drop}%, 当前功率: {power}W")
+            
+            elif event_type == "pace_drop":
+                drop = event.get("drop_pct", "?")
+                pace = event.get("pace_at_event", "?")
+                lines.append(f"📉 **配速下降** @ {timestamp:.1f}min")
+                lines.append(f"   - 下降幅度: {drop}%, 当前配速: {pace:.2f}min/km")
+            
+            elif event_type == "rpe_spike":
+                before = event.get("rpe_before", "?")
+                after = event.get("rpe_after", "?")
+                increase = event.get("increase", "?")
+                lines.append(f"⚡ **RPE骤升** @ {timestamp:.1f}min")
+                lines.append(f"   - 从 {before} 升至 {after} (增加 {increase})")
+            
+            else:
+                lines.append(f"• **{event_type}** @ {timestamp:.1f}min")
+            
+            lines.append("")
+        
+        return lines
     
     def build_update_from_records_prompt(
         self,

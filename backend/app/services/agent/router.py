@@ -3,7 +3,9 @@ Action Router - Routes requests to appropriate actions.
 
 Determines which action to execute based on the request type.
 """
-from typing import Dict, Type
+from typing import Dict, Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.agent.state import AgentState, ActionType
 from app.services.agent.actions.base import BaseAction
@@ -23,15 +25,28 @@ class ActionRouter:
     based on the action type in the state.
     """
     
-    def __init__(self):
+    def __init__(self, db: Optional[AsyncSession] = None):
         self._actions: Dict[str, BaseAction] = {}
+        self._db = db
         self._register_default_actions()
     
     def _register_default_actions(self) -> None:
         """Register the default set of actions."""
         self.register(ActionType.GENERATE_PLAN.value, GeneratePlanAction())
         self.register(ActionType.MODIFY_PLAN.value, ModifyPlanAction())
-        self.register(ActionType.ANALYZE_RECORD.value, AnalyzeRecordAction())
+        
+        # AnalyzeRecordAction needs db for stats calculation
+        analyze_action = AnalyzeRecordAction(db=self._db)
+        self.register(ActionType.ANALYZE_RECORD.value, analyze_action)
+    
+    def set_db(self, db: AsyncSession) -> None:
+        """Update database session for actions that need it."""
+        self._db = db
+        
+        # Update AnalyzeRecordAction
+        analyze_action = self._actions.get(ActionType.ANALYZE_RECORD.value)
+        if analyze_action and hasattr(analyze_action, 'set_db'):
+            analyze_action.set_db(db)
     
     def register(self, action_type: str, action: BaseAction) -> None:
         """
