@@ -165,7 +165,12 @@ export default function Settings() {
     )
     
     if (result.success) {
-      showToast(`同步完成: ${result.synced} 条活动，创建 ${result.created || 0} 条记录`, 'success')
+      let message = `同步完成: ${result.synced} 条活动(含laps详情)，创建 ${result.created || 0} 条记录`
+      if (result.errors && result.errors.length > 0) {
+        message += `，${result.errors.length} 条获取详情失败`
+        console.warn('[Strava Sync] Errors:', result.errors)
+      }
+      showToast(message, 'success')
     } else {
       showToast(result.message || '同步失败', 'error')
     }

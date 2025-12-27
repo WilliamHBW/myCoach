@@ -12,7 +12,7 @@ import {
 import { 
   StravaService, 
   mapStravaActivityToRecord, 
-  StravaActivity 
+  StravaDetailedActivity 
 } from '../services/strava.js'
 import { backendClient } from '../services/backend.js'
 
@@ -288,7 +288,8 @@ router.post('/sync', async (req: Request, res: Response) => {
       total: result.total,
       created: createdRecords,
       skipped: skippedRecords,
-      message: `Synced ${result.synced} activities, created ${createdRecords} workout records`
+      errors: result.errors,
+      message: `Synced ${result.synced} activities (with laps), created ${createdRecords} workout records`
     })
   } catch (error: any) {
     console.error('[Strava] Sync failed:', error)
@@ -336,7 +337,7 @@ router.post('/reset', (_req: Request, res: Response) => {
 /**
  * Create or update a workout record in the Python backend
  */
-async function createOrUpdateWorkoutRecord(activity: StravaActivity): Promise<{
+async function createOrUpdateWorkoutRecord(activity: StravaDetailedActivity): Promise<{
   created: boolean
   recordId: string | null
 }> {

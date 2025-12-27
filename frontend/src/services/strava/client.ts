@@ -27,6 +27,7 @@ export interface SyncResult {
   skipped?: number
   message: string
   error?: string
+  errors?: string[]
 }
 
 export interface StravaSyncedRecord {
