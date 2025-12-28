@@ -45,16 +45,6 @@ export const RECORD_FIELDS: RecordField[] = [
     placeholder: '例如: 140'
   },
   {
-    id: 'rpe',
-    label: '疲劳度 (RPE 1-10)',
-    type: 'slider',
-    required: true,
-    min: 1,
-    max: 10,
-    defaultValue: 5,
-    unit: '级'
-  },
-  {
     id: 'notes',
     label: '备注/感受',
     type: 'textarea',

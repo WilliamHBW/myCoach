@@ -149,28 +149,6 @@ export default function RecordForm() {
           </select>
         )
 
-      case 'slider': {
-        const min = field.min || 0
-        const max = field.max || 10
-        const currentValue = Number(formData[field.id]) || min
-        const progressPercent = ((currentValue - min) / (max - min)) * 100
-        
-        return (
-          <div className='slider-container'>
-            <input
-              type='range'
-              min={min}
-              max={max}
-              value={currentValue}
-              onChange={(e) => handleChange(field.id, Number(e.target.value))}
-              className='range-input'
-              style={{ '--progress': `${progressPercent}%` } as React.CSSProperties}
-            />
-            <span className='slider-value'>{currentValue}</span>
-          </div>
-        )
-      }
-
       case 'textarea':
         return (
           <textarea

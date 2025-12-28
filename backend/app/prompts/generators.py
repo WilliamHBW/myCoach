@@ -96,7 +96,6 @@ def generate_analysis_prompt(record_data: dict[str, Any]) -> str:
 
 **运动类型：** {record_data.get('type', '未知')}
 **训练时长：** {record_data.get('duration', 0)}分钟
-**自感疲劳度（RPE 1-10）：** {record_data.get('rpe', 5)}
 {heart_rate_line}
 {notes_line}
 
@@ -189,13 +188,12 @@ def generate_plan_update_prompt(
             "plannedExercises": len(day.get("planDay", {}).get("exercises", [])),
             "records": [
                 {
-                    "type": r.get("data", {}).get("type"),
-                    "duration": r.get("data", {}).get("duration"),
-                    "rpe": r.get("data", {}).get("rpe"),
-                    "heartRate": r.get("data", {}).get("heartRate"),
-                    "notes": r.get("data", {}).get("notes"),
-                    "hasProData": bool(r.get("data", {}).get("proData"))
-                }
+                        "type": r.get("data", {}).get("type"),
+                        "duration": r.get("data", {}).get("duration"),
+                        "heartRate": r.get("data", {}).get("heartRate"),
+                        "notes": r.get("data", {}).get("notes"),
+                        "hasProData": bool(r.get("data", {}).get("proData"))
+                    }
                 for r in day.get("records", [])
             ]
         }

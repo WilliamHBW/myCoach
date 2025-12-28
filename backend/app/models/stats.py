@@ -106,7 +106,7 @@ class WorkoutStats(Base):
         
         # Extract key metrics from level1
         if self.level1_stats:
-            for key in ["duration_min", "avg_hr", "tss", "rpe_reported", "completion_rate"]:
+            for key in ["duration_min", "avg_hr", "tss", "completion_rate"]:
                 if key in self.level1_stats:
                     summary[key] = self.level1_stats[key]
         

@@ -371,17 +371,6 @@ export function mapStravaActivityToRecord(activity: StravaDetailedActivity): Rec
       ? Math.round(activity.elapsed_time / 60)
       : undefined
 
-  // Estimate RPE from suffer_score or perceived_exertion
-  let rpe = 5 // default
-  if (activity.perceived_exertion) {
-    rpe = Math.min(10, Math.max(1, activity.perceived_exertion))
-  } else if (activity.suffer_score) {
-    if (activity.suffer_score < 25) rpe = 3
-    else if (activity.suffer_score < 50) rpe = 5
-    else if (activity.suffer_score < 100) rpe = 7
-    else rpe = 9
-  }
-
   // Build notes from activity details
   const notesParts: string[] = []
   if (activity.name) notesParts.push(activity.name)
@@ -405,7 +394,6 @@ export function mapStravaActivityToRecord(activity: StravaDetailedActivity): Rec
     type,
     duration: durationMinutes,
     heartRate: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined,
-    rpe,
     notes: notesParts.join(' | ') || undefined,
     proData: buildStravaProData(activity, type)
   }
@@ -467,25 +455,22 @@ function buildStravaProData(activity: StravaDetailedActivity, type: string): Rec
   // Level 2: Intervals/Laps data
   const intervals = buildIntervalsFromLaps(activity.laps, type)
   if (intervals && intervals.length > 0) {
-    baseStats.intervals = intervals
+    return {
+      type: 'intervals',
+      data: baseStats,
+      intervals: intervals,
+      columns: type === '跑步' 
+        ? ['label', 'duration', 'pace', 'cadence', 'avgHr', 'maxHr']
+        : type === '骑行'
+          ? ['laps', 'time', 'distance', 'avgSpeed', 'avgPower', 'avgHr', 'avgCadence']
+          : Object.keys(intervals[0])
+    }
   }
 
-  // Level 2: Splits data (per km/mile)
-  if (activity.splits_metric && activity.splits_metric.length > 0) {
-    baseStats.splits = activity.splits_metric.map((split, index) => ({
-      split_num: index + 1,
-      distance_m: split.distance,
-      elapsed_time_s: split.elapsed_time,
-      moving_time_s: split.moving_time,
-      avg_speed_ms: split.average_speed,
-      avg_hr: split.average_heartrate ? Math.round(split.average_heartrate) : undefined,
-      elevation_diff_m: split.elevation_difference,
-      pace_zone: split.pace_zone
-    }))
+  return {
+    type: 'simple',
+    data: baseStats
   }
-
-  // Clean undefined values
-  return cleanUndefined(baseStats)
 }
 
 /**
@@ -500,39 +485,47 @@ function buildIntervalsFromLaps(laps: StravaLap[] | undefined, type: string): an
   }
 
   return laps.map((lap, index) => {
-    const interval: Record<string, any> = {
+    if (type === '跑步') {
+      // Align with RUNNING_INTERVAL_COLUMNS in frontend
+      const paceSeconds = (lap.distance && lap.moving_time) ? lap.moving_time / (lap.distance / 1000) : 0
+      const paceMin = Math.floor(paceSeconds / 60)
+      const paceSec = Math.round(paceSeconds % 60)
+      const pace = paceSeconds ? `${paceMin}:${paceSec.toString().padStart(2, '0')}` : '-'
+
+      return cleanUndefined({
+        label: lap.name || `Lap ${index + 1}`,
+        duration: lap.moving_time ? `${Math.floor(lap.moving_time / 60)}:${(lap.moving_time % 60).toString().padStart(2, '0')}` : `${Math.floor(lap.elapsed_time / 60)}:${(lap.elapsed_time % 60).toString().padStart(2, '0')}`,
+        pace: pace,
+        cadence: lap.average_cadence ? Math.round(lap.average_cadence * 2) : undefined,
+        avgHr: lap.average_heartrate ? Math.round(lap.average_heartrate) : undefined,
+        maxHr: lap.max_heartrate ? Math.round(lap.max_heartrate) : undefined,
+        zone: lap.pace_zone
+      })
+    }
+
+    if (type === '骑行') {
+      // Align with CYCLING_INTERVAL_COLUMNS in frontend
+      return cleanUndefined({
+        laps: (index + 1).toString(),
+        time: lap.moving_time ? `${Math.floor(lap.moving_time / 60)}:${(lap.moving_time % 60).toString().padStart(2, '0')}` : `${Math.floor(lap.elapsed_time / 60)}:${(lap.elapsed_time % 60).toString().padStart(2, '0')}`,
+        distance: (lap.distance / 1000).toFixed(2),
+        avgSpeed: (lap.average_speed * 3.6).toFixed(1),
+        avgHr: lap.average_heartrate ? Math.round(lap.average_heartrate) : undefined,
+        avgPower: lap.average_watts ? Math.round(lap.average_watts) : undefined,
+        avgCadence: lap.average_cadence ? Math.round(lap.average_cadence) : undefined
+      })
+    }
+
+    // Default format for other sports
+    return cleanUndefined({
       lap_index: index + 1,
       name: lap.name,
       elapsed_time_s: lap.elapsed_time,
       moving_time_s: lap.moving_time,
       distance_m: lap.distance,
       avg_speed_ms: lap.average_speed,
-      max_speed_ms: lap.max_speed,
-      avg_hr: lap.average_heartrate ? Math.round(lap.average_heartrate) : undefined,
-      max_hr: lap.max_heartrate ? Math.round(lap.max_heartrate) : undefined,
-      elevation_gain_m: lap.total_elevation_gain
-    }
-
-    // Add type-specific fields
-    if (type === '骑行') {
-      interval.avg_power = lap.average_watts
-      interval.avg_cadence = lap.average_cadence
-      interval.avg_speed_kmh = lap.average_speed ? parseFloat((lap.average_speed * 3.6).toFixed(1)) : undefined
-    }
-
-    if (type === '跑步') {
-      // Calculate lap pace
-      if (lap.distance && lap.moving_time) {
-        const paceSeconds = lap.moving_time / (lap.distance / 1000)
-        const paceMin = Math.floor(paceSeconds / 60)
-        const paceSec = Math.round(paceSeconds % 60)
-        interval.pace_min_km = `${paceMin}:${paceSec.toString().padStart(2, '0')}`
-      }
-      interval.avg_cadence_spm = lap.average_cadence ? Math.round(lap.average_cadence * 2) : undefined
-      interval.pace_zone = lap.pace_zone
-    }
-
-    return cleanUndefined(interval)
+      avg_hr: lap.average_heartrate ? Math.round(lap.average_heartrate) : undefined
+    })
   })
 }
 

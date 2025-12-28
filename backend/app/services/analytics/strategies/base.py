@@ -148,35 +148,6 @@ class ActivityStrategy(ABC):
         
         return round(actual_duration / planned_duration * 100, 1)
     
-    def _estimate_tss_from_rpe(
-        self,
-        duration_minutes: float,
-        rpe: float
-    ) -> float:
-        """
-        Estimate TSS from RPE when power data is not available.
-        
-        Uses simplified formula: TSS ≈ duration * (RPE/10)^2 * 10
-        
-        Args:
-            duration_minutes: Duration in minutes
-            rpe: RPE value (1-10)
-            
-        Returns:
-            Estimated TSS value
-        """
-        if not rpe or rpe == 0:
-            return 0.0
-        
-        # Normalize RPE to 1-10 range
-        rpe = max(1, min(10, rpe))
-        
-        # Intensity factor approximation from RPE
-        intensity = rpe / 10
-        
-        # Simplified TSS formula
-        return round(duration_minutes * (intensity ** 2) * 10, 1)
-    
     def _detect_power_drop_intervals(
         self,
         intervals: List[IntervalData],

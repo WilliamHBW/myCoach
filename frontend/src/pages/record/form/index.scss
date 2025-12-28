@@ -80,13 +80,8 @@
     margin-bottom: 0;
   }
 
-  // Full width for textarea items
+  // Full width for multi-line items
   &:has(.textarea-input) {
-    grid-column: 1 / -1;
-  }
-
-  // Full width for slider items (RPE)
-  &:has(.slider-container) {
     grid-column: 1 / -1;
   }
 
@@ -188,71 +183,6 @@
 
   &::placeholder {
     color: var(--color-text-muted);
-  }
-}
-
-// ========================================
-// Slider Styles
-// ========================================
-.slider-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-lg);
-  background: var(--color-gray-50);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-md);
-  border: 2px solid var(--color-gray-200);
-
-  .range-input {
-    flex: 1;
-    height: 8px;
-    -webkit-appearance: none;
-    background: var(--color-gray-300);
-    border-radius: 4px;
-    cursor: pointer;
-    position: relative;
-
-    &::-webkit-slider-runnable-track {
-      height: 8px;
-      background: linear-gradient(
-        to right,
-        var(--color-primary) 0%,
-        var(--color-primary) var(--progress, 50%),
-        var(--color-gray-300) var(--progress, 50%),
-        var(--color-gray-300) 100%
-      );
-      border-radius: 4px;
-    }
-
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 24px;
-      height: 24px;
-      background: var(--color-white);
-      border: 3px solid var(--color-primary);
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      margin-top: -8px;
-      transition: all var(--transition-fast);
-
-      &:hover {
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(252, 76, 2, 0.3);
-      }
-    }
-  }
-
-  .slider-value {
-    min-width: 48px;
-    text-align: center;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--color-primary);
-    background: var(--color-primary-light);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
   }
 }
 
@@ -682,26 +612,6 @@
   .textarea-input {
     min-height: 100px;
     font-size: 14px;
-  }
-
-  .slider-container {
-    padding: var(--spacing-sm) var(--spacing-md);
-    gap: var(--spacing-md);
-
-    .range-input {
-      height: 6px;
-
-      &::-webkit-slider-thumb {
-        width: 20px;
-        height: 20px;
-        margin-top: -7px;
-      }
-    }
-
-    .slider-value {
-      font-size: 20px;
-      min-width: 40px;
-    }
   }
 
   .submit-btn {

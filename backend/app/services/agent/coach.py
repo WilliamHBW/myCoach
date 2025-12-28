@@ -129,7 +129,7 @@ class CoachAgent:
         query = state.get("user_message", "")
         if not query and state.get("record_data"):
             record = state["record_data"]
-            query = f"{record.get('type', '')} 训练 RPE {record.get('rpe', '')}"
+            query = f"{record.get('type', '')} 训练"
         
         if not query:
             query = state.get("action", "training")

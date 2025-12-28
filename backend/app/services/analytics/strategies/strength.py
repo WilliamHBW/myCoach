@@ -4,7 +4,6 @@ Strength Strategy - Statistics calculation for strength/gym activities.
 Strength-specific metrics:
 - Set/rep tracking
 - Volume load (sets × reps × weight)
-- RPE-based intensity
 """
 from typing import Any, Dict, List, Optional
 
@@ -16,7 +15,7 @@ class StrengthStrategy(ActivityStrategy):
     """
     Strategy for strength training activity statistics.
     
-    Volume and RPE are primary metrics for strength analysis.
+    Volume is the primary metric for strength analysis.
     """
     
     activity_type = "strength"
@@ -29,8 +28,7 @@ class StrengthStrategy(ActivityStrategy):
         - duration_min
         - avg_hr (if available, from wearable)
         - max_hr
-        - tss (estimated from RPE and duration)
-        - rpe_reported
+        - tss
         - completion_rate
         - total_sets (if interval data available)
         """
@@ -45,21 +43,11 @@ class StrengthStrategy(ActivityStrategy):
         if "max_hr" in activity.summary:
             stats["max_hr"] = activity.summary["max_hr"]
         
-        # TSS from RPE (primary method for strength)
-        if "rpe" in activity.summary:
-            stats["rpe_reported"] = activity.summary["rpe"]
-            stats["tss"] = self._estimate_strength_tss(
-                activity.duration_seconds / 60,
-                activity.summary["rpe"]
-            )
-        elif activity.summary.get("tss"):
+        if activity.summary.get("tss"):
             stats["tss"] = activity.summary["tss"]
         else:
-            # Default estimation for strength training
-            stats["tss"] = self._estimate_strength_tss(
-                activity.duration_seconds / 60,
-                6  # Default moderate RPE
-            )
+            # Default estimation for strength training based on duration
+            stats["tss"] = round((activity.duration_seconds / 60) * 3, 1)
         
         # Set count from intervals
         if activity.has_intervals():
@@ -76,7 +64,6 @@ class StrengthStrategy(ActivityStrategy):
         Includes:
         - exercises: List of exercise sets
         - exercise_counts: Count by exercise type
-        - avg_rpe_by_exercise
         """
         stats: Dict[str, Any] = {"intervals": []}
         
@@ -97,9 +84,6 @@ class StrengthStrategy(ActivityStrategy):
             if interval.notes:
                 interval_stat["exercise"] = interval.notes
             
-            if interval.rpe is not None:
-                interval_stat["rpe"] = interval.rpe
-            
             if interval.avg_hr is not None:
                 interval_stat["avg_hr"] = interval.avg_hr
             
@@ -109,25 +93,12 @@ class StrengthStrategy(ActivityStrategy):
         
         # Group by exercise type
         exercise_counts = {}
-        exercise_rpe = {}
         
         for interval in intervals:
             exercise = interval.notes or interval.interval_type
             exercise_counts[exercise] = exercise_counts.get(exercise, 0) + 1
-            
-            if interval.rpe is not None:
-                if exercise not in exercise_rpe:
-                    exercise_rpe[exercise] = []
-                exercise_rpe[exercise].append(interval.rpe)
         
         stats["exercise_counts"] = exercise_counts
-        
-        # Average RPE by exercise
-        if exercise_rpe:
-            stats["avg_rpe_by_exercise"] = {
-                ex: round(sum(rpes) / len(rpes), 1)
-                for ex, rpes in exercise_rpe.items()
-            }
         
         return stats
     
@@ -136,7 +107,6 @@ class StrengthStrategy(ActivityStrategy):
         Compute Level 3 strength statistics (event detection).
         
         Detects:
-        - rpe_spike: Sudden RPE increase mid-workout
         - fatigue_onset: When performance metrics start declining
         """
         stats: Dict[str, Any] = {"events": []}
@@ -146,85 +116,11 @@ class StrengthStrategy(ActivityStrategy):
         
         events = []
         
-        # Detect RPE spikes
-        rpe_spikes = self._detect_rpe_spikes(activity.intervals)
-        events.extend(rpe_spikes)
+        # Add fatigue detection logic here in the future
         
         events.sort(key=lambda x: x.get("timestamp_min", 0))
         
         stats["events"] = events
         
         return stats
-    
-    # ========================================
-    # Strength-specific helpers
-    # ========================================
-    
-    def _estimate_strength_tss(
-        self,
-        duration_min: float,
-        rpe: float
-    ) -> float:
-        """
-        Estimate TSS for strength training.
-        
-        Strength training has different energy system demands.
-        Uses a modified formula with lower base values.
-        """
-        if duration_min <= 0:
-            return 0.0
-        
-        # Normalize RPE
-        rpe = max(1, min(10, rpe))
-        
-        # Strength training typically has lower TSS per minute
-        # due to rest periods and anaerobic nature
-        intensity = rpe / 10
-        
-        # Reduced multiplier compared to cardio
-        return round(duration_min * (intensity ** 2) * 6, 1)
-    
-    def _detect_rpe_spikes(
-        self,
-        intervals: List[IntervalData],
-        threshold: float = 2.0
-    ) -> List[Dict[str, Any]]:
-        """
-        Detect sudden RPE increases.
-        
-        Args:
-            intervals: List of intervals
-            threshold: RPE increase threshold to count as spike
-            
-        Returns:
-            List of RPE spike events
-        """
-        events = []
-        
-        rpe_intervals = [(i, i.rpe) for i in intervals if i.rpe is not None]
-        
-        if len(rpe_intervals) < 2:
-            return events
-        
-        cumulative_time = 0
-        prev_rpe = rpe_intervals[0][1]
-        
-        for interval, rpe in rpe_intervals[1:]:
-            cumulative_time += interval.duration_seconds
-            
-            rpe_increase = rpe - prev_rpe
-            
-            if rpe_increase >= threshold:
-                events.append({
-                    "timestamp_min": round(cumulative_time / 60, 1),
-                    "event": "rpe_spike",
-                    "rpe_before": prev_rpe,
-                    "rpe_after": rpe,
-                    "increase": round(rpe_increase, 1),
-                    "interval_index": interval.index,
-                })
-            
-            prev_rpe = rpe
-        
-        return events
 

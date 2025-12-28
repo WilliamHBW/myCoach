@@ -95,7 +95,6 @@ class ContextManager:
             metadata.update({
                 "workoutType": record_data.get("type"),
                 "duration": record_data.get("duration"),
-                "rpe": record_data.get("rpe"),
             })
         
         await self.vector_store.store(

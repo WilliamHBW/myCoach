@@ -183,7 +183,6 @@ class PromptBuilder:
 
 **运动类型：** {record_data.get('type', '未知')}
 **训练时长：** {record_data.get('duration', 0)}分钟
-**自感疲劳度（RPE 1-10）：** {record_data.get('rpe', 5)}
 {heart_rate_line}
 {notes_line}
 
@@ -356,10 +355,6 @@ class PromptBuilder:
             tss_level = self._categorize_tss(tss)
             lines.append(f"- **训练压力得分 (TSS):** {tss:.1f} ({tss_level})")
         
-        # RPE
-        if "rpe_reported" in stats:
-            lines.append(f"- **主观疲劳度 (RPE):** {stats['rpe_reported']}/10")
-        
         # Completion rate
         if stats.get("completion_rate") is not None:
             lines.append(f"- **完成率:** {stats['completion_rate']:.1f}%")
@@ -490,13 +485,6 @@ class PromptBuilder:
                 lines.append(f"📉 **配速下降** @ {timestamp:.1f}min")
                 lines.append(f"   - 下降幅度: {drop}%, 当前配速: {pace:.2f}min/km")
             
-            elif event_type == "rpe_spike":
-                before = event.get("rpe_before", "?")
-                after = event.get("rpe_after", "?")
-                increase = event.get("increase", "?")
-                lines.append(f"⚡ **RPE骤升** @ {timestamp:.1f}min")
-                lines.append(f"   - 从 {before} 升至 {after} (增加 {increase})")
-            
             else:
                 lines.append(f"• **{event_type}** @ {timestamp:.1f}min")
             
@@ -553,7 +541,6 @@ class PromptBuilder:
                     {
                         "type": r.get("data", {}).get("type"),
                         "duration": r.get("data", {}).get("duration"),
-                        "rpe": r.get("data", {}).get("rpe"),
                         "heartRate": r.get("data", {}).get("heartRate"),
                         "notes": r.get("data", {}).get("notes"),
                         "hasProData": bool(r.get("data", {}).get("proData"))

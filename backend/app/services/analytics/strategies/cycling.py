@@ -35,7 +35,6 @@ class CyclingStrategy(ActivityStrategy):
         - power_hr_ratio
         - hr_drift_pct
         - tss
-        - rpe_reported
         - completion_rate
         """
         stats: Dict[str, Any] = {}
@@ -83,16 +82,6 @@ class CyclingStrategy(ActivityStrategy):
                 np,
                 self.DEFAULT_FTP
             )
-        elif activity.summary.get("rpe"):
-            # Estimate from RPE
-            stats["tss"] = self._estimate_tss_from_rpe(
-                activity.duration_seconds / 60,
-                activity.summary["rpe"]
-            )
-        
-        # RPE
-        if "rpe" in activity.summary:
-            stats["rpe_reported"] = activity.summary["rpe"]
         
         # Completion rate (if planned duration is known)
         # For now, we don't have planned duration from raw data

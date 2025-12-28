@@ -27,7 +27,6 @@ class IntervalData:
     max_hr: Optional[float] = None
     avg_pace: Optional[float] = None  # min/km for running
     target_power: Optional[str] = None  # Zone label like "Z4"
-    rpe: Optional[float] = None
     notes: Optional[str] = None
 
 
@@ -45,7 +44,7 @@ class NormalizedActivity:
     # Summary metrics (may be partially filled depending on source)
     summary: Dict[str, Any] = field(default_factory=dict)
     # Keys: avg_hr, max_hr, avg_power, max_power, normalized_power,
-    #       avg_pace, distance_km, elevation_m, calories, tss, rpe
+    #       avg_pace, distance_km, elevation_m, calories, tss
     
     # Interval/segment data
     intervals: List[IntervalData] = field(default_factory=list)
@@ -83,9 +82,7 @@ class NormalizedActivity:
         if self.has_power_data():
             score += 0.2
         if self.has_intervals():
-            score += 0.2
-        if self.summary.get("rpe"):
-            score += 0.1
+            score += 0.3
         
         return min(score, 1.0)
 
@@ -231,16 +228,42 @@ class IntervalsAdapter(RawDataAdapter):
         if "total_elevation_gain" in raw_data:
             summary["elevation_m"] = raw_data["total_elevation_gain"]
         
-        # RPE if available
-        if "perceived_exertion" in raw_data:
-            summary["rpe"] = raw_data["perceived_exertion"]
-        
         return summary
     
     def _extract_intervals(self, raw_data: Dict[str, Any]) -> List[IntervalData]:
-        """Extract interval data."""
+        """Extract interval data from Intervals.icu or proData."""
         intervals = []
         
+        # Check if we have unified proData intervals first
+        pro_data = raw_data.get("proData", {})
+        if isinstance(pro_data, dict) and pro_data.get("type") == "intervals":
+            raw_intervals = pro_data.get("intervals") or []
+            for idx, lap in enumerate(raw_intervals):
+                duration = 0
+                time_val = lap.get("time") or lap.get("duration")
+                if time_val:
+                    if isinstance(time_val, (int, float)):
+                        duration = int(time_val)
+                    else:
+                        parts = str(time_val).split(':')
+                        if len(parts) == 2:
+                            duration = int(parts[0]) * 60 + int(parts[1])
+                        elif len(parts) == 3:
+                            duration = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                
+                interval_data = IntervalData(
+                    index=idx,
+                    interval_type=lap.get("type", "work"),
+                    duration_seconds=duration,
+                    avg_power=self._parse_float(lap.get("avgPower")),
+                    avg_hr=self._parse_float(lap.get("avgHr")),
+                    max_hr=self._parse_float(lap.get("maxHr")),
+                    target_power=lap.get("target"),
+                    notes=lap.get("label") or lap.get("name"),
+                )
+                intervals.append(interval_data)
+            return intervals
+
         # Intervals.icu stores intervals in 'icu_intervals' or 'intervals'
         raw_intervals = raw_data.get("icu_intervals") or raw_data.get("intervals") or []
         
@@ -258,6 +281,15 @@ class IntervalsAdapter(RawDataAdapter):
             intervals.append(interval_data)
         
         return intervals
+
+    def _parse_float(self, val: Any) -> Optional[float]:
+        """Parse string or number to float."""
+        if val is None or val == '-':
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
 
 
 class StravaAdapter(RawDataAdapter):
@@ -323,9 +355,27 @@ class StravaAdapter(RawDataAdapter):
         return summary
     
     def _extract_intervals(self, raw_data: Dict[str, Any]) -> List[IntervalData]:
-        """Extract intervals from Strava laps."""
+        """Extract intervals from Strava data or proData."""
         intervals = []
         
+        # Check if we have unified proData intervals first
+        pro_data = raw_data.get("proData", {})
+        if isinstance(pro_data, dict) and pro_data.get("type") == "intervals":
+            raw_intervals = pro_data.get("intervals") or []
+            for idx, lap in enumerate(raw_intervals):
+                # Map from unified proData keys back to IntervalData
+                interval_data = IntervalData(
+                    index=idx,
+                    interval_type="work",
+                    duration_seconds=self._parse_time_to_seconds(lap.get("time") or lap.get("duration")),
+                    avg_power=self._parse_float(lap.get("avgPower")),
+                    avg_hr=self._parse_float(lap.get("avgHr")),
+                    max_hr=self._parse_float(lap.get("maxHr")),
+                )
+                intervals.append(interval_data)
+            return intervals
+
+        # Fallback to old laps structure
         laps = raw_data.get("laps") or []
         
         for idx, lap in enumerate(laps):
@@ -341,13 +391,40 @@ class StravaAdapter(RawDataAdapter):
         
         return intervals
 
+    def _parse_time_to_seconds(self, time_str: Any) -> int:
+        """Parse time string like '13:16' or '419' to seconds."""
+        if not time_str:
+            return 0
+        if isinstance(time_str, (int, float)):
+            return int(time_str)
+        
+        parts = str(time_str).split(':')
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        
+        try:
+            return int(float(time_str))
+        except ValueError:
+            return 0
+
+    def _parse_float(self, val: Any) -> Optional[float]:
+        """Parse string or number to float."""
+        if val is None or val == '-':
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
 
 class ManualAdapter(RawDataAdapter):
     """
     Adapter for manually entered workout data.
     
     This handles the simplified data format used in the myCoach frontend:
-    - Basic metrics (type, duration, rpe)
+    - Basic metrics (type, duration)
     - Optional heart rate
     - Optional notes
     - Optional structured intervals
@@ -391,8 +468,6 @@ class ManualAdapter(RawDataAdapter):
         
         if "heartRate" in raw_data:
             summary["avg_hr"] = raw_data["heartRate"]
-        if "rpe" in raw_data:
-            summary["rpe"] = raw_data["rpe"]
         if "notes" in raw_data:
             summary["notes"] = raw_data["notes"]
         
@@ -423,7 +498,6 @@ class ManualAdapter(RawDataAdapter):
                 duration_seconds=int(interval.get("duration", 0) * 60),
                 avg_power=interval.get("power"),
                 avg_hr=interval.get("hr"),
-                rpe=interval.get("rpe"),
                 notes=interval.get("notes"),
             )
             intervals.append(interval_data)
@@ -459,4 +533,3 @@ def get_adapter(source: str) -> RawDataAdapter:
         adapter_class = ManualAdapter
     
     return adapter_class()
-

@@ -228,13 +228,18 @@ class AnalyzeRecordAction(BaseAction):
     
     def _detect_data_source(self, record_data: dict[str, Any]) -> str:
         """Detect data source from record content."""
+        source = record_data.get("source")
+        if source:
+            return source
+            
         if record_data.get("proData"):
             # Has professional data from external sync
             pro_data = record_data["proData"]
-            if "intervals" in pro_data or "icu_intervals" in pro_data:
+            if "icu_intervals" in pro_data:
                 return "intervals"
-            if "laps" in pro_data:
-                return "strava"
+            if "intervals" in pro_data:
+                # Could be from Strava or Intervals, but both now use unified format
+                return record_data.get("source", "intervals")
         return "manual"
     
     async def execute_stream(self, state: AgentState) -> AsyncIterator[str]:

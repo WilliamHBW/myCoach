@@ -453,7 +453,7 @@ async for chunk in agent.execute_stream(request):
 result = await agent.analyze_record(
     plan_id="xxx",
     record_id="yyy",
-    record_data={"type": "力量训练", "duration": 60, "rpe": 7}
+    record_data={"type": "力量训练", "duration": 60}
 )
 
 if result.suggest_update:

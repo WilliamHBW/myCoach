@@ -226,8 +226,6 @@ class StatsCalculator:
             lines.append(f"- 心率漂移: {l1['hr_drift_pct']}%")
         if "tss" in l1:
             lines.append(f"- 训练压力得分 (TSS): {l1['tss']}")
-        if "rpe_reported" in l1:
-            lines.append(f"- 主观疲劳度 (RPE): {l1['rpe_reported']}")
         
         # Level 2 interval summary
         l2 = stats.level2_stats
@@ -255,8 +253,6 @@ class StatsCalculator:
                     lines.append(f"- 功率下降 @ {timestamp}min ({event.get('drop_pct')}%)")
                 elif event_type == "pace_drop":
                     lines.append(f"- 配速下降 @ {timestamp}min ({event.get('drop_pct')}%)")
-                elif event_type == "rpe_spike":
-                    lines.append(f"- RPE骤升 @ {timestamp}min ({event.get('rpe_before')} -> {event.get('rpe_after')})")
         
         lines.append(f"\n**数据质量得分:** {stats.data_quality_score}")
         

@@ -288,7 +288,6 @@ async def analyze_record(
             record_data={
                 "type": record.data.get("type"),
                 "duration": record.data.get("duration"),
-                "rpe": record.data.get("rpe"),
                 "heartRate": record.data.get("heartRate"),
                 "notes": record.data.get("notes"),
             }

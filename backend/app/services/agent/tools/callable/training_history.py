@@ -75,7 +75,6 @@ class GetTrainingHistoryTool(Tool):
                     "date": record.created_at.isoformat(),
                     "type": data.get("type", "unknown"),
                     "duration": data.get("duration", 0),
-                    "rpe": data.get("rpe"),
                     "hasAnalysis": bool(record.analysis),
                 })
             

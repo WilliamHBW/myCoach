@@ -196,19 +196,6 @@ export function mapActivityToRecord(activity: IntervalsActivity): Record<string,
       ? Math.round(activity.elapsed_time / 60)
       : undefined
 
-  // Estimate RPE from training load and intensity
-  let rpe = 5 // default
-  if (activity.icu_intensity) {
-    // icu_intensity is typically 0-100, map to 1-10
-    rpe = Math.max(1, Math.min(10, Math.round(activity.icu_intensity / 10)))
-  } else if (activity.icu_training_load) {
-    // Rough estimation based on training load
-    if (activity.icu_training_load < 30) rpe = 3
-    else if (activity.icu_training_load < 60) rpe = 5
-    else if (activity.icu_training_load < 100) rpe = 7
-    else rpe = 9
-  }
-
   // Build notes from activity details
   const notesParts: string[] = []
   if (activity.name) notesParts.push(activity.name)
@@ -229,7 +216,6 @@ export function mapActivityToRecord(activity: IntervalsActivity): Record<string,
     type,
     duration: durationMinutes,
     heartRate: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined,
-    rpe,
     notes: notesParts.join(' | ') || undefined,
     // Store original intervals data as proData for sports that support it
     proData: buildProData(activity, type)
@@ -237,21 +223,26 @@ export function mapActivityToRecord(activity: IntervalsActivity): Record<string,
 }
 
 /**
- * Build professional data from Intervals activity
+ * Build professional data from Intervals activity including intervals/laps
  */
 function buildProData(activity: IntervalsActivity, type: string): Record<string, any> | undefined {
+  const baseStats: Record<string, any> = {
+    avg_hr: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined,
+    max_hr: activity.max_heartrate ? Math.round(activity.max_heartrate) : undefined,
+    calories: activity.calories,
+    tss: activity.icu_training_load,
+    intensity: activity.icu_intensity
+  }
+
   if (type === '骑行') {
-    return {
+    Object.assign(baseStats, {
       distance: activity.distance ? (activity.distance / 1000).toFixed(2) : undefined,
       speed: activity.average_speed ? (activity.average_speed * 3.6).toFixed(1) : undefined,
       maxSpeed: activity.max_speed ? (activity.max_speed * 3.6).toFixed(1) : undefined,
       cadence: activity.average_cadence,
       power: activity.average_watts || activity.weighted_average_watts,
-      elevation: activity.total_elevation_gain,
-      calories: activity.calories,
-      avgHr: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined,
-      maxHr: activity.max_heartrate ? Math.round(activity.max_heartrate) : undefined
-    }
+      elevation: activity.total_elevation_gain
+    })
   }
 
   if (type === '跑步') {
@@ -264,23 +255,88 @@ function buildProData(activity: IntervalsActivity, type: string): Record<string,
       pace = `${paceMin}:${paceSec.toString().padStart(2, '0')}`
     }
 
-    return {
+    Object.assign(baseStats, {
       duration: activity.moving_time,
       pace,
-      cadence: activity.average_cadence ? Math.round(activity.average_cadence * 2) : undefined, // Convert to spm
-      avgHr: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined,
-      maxHr: activity.max_heartrate ? Math.round(activity.max_heartrate) : undefined
-    }
+      cadence: activity.average_cadence ? Math.round(activity.average_cadence * 2) : undefined,
+      elevation: activity.total_elevation_gain
+    })
   }
 
   if (type === '游泳') {
-    return {
+    Object.assign(baseStats, {
       distance: activity.distance,
-      calories: activity.calories,
-      avgHr: activity.average_heartrate ? Math.round(activity.average_heartrate) : undefined
+      pool_length: activity.pool_length
+    })
+  }
+
+  // Add intervals if present in unified format
+  const rawIntervals = activity.icu_intervals || activity.intervals || []
+  if (rawIntervals.length > 0) {
+    const intervals = rawIntervals.map((interval: any, index: number) => {
+      const row: Record<string, any> = {
+        label: interval.label || interval.name || `Lap ${index + 1}`,
+        duration: interval.moving_time || interval.elapsed_time || 0,
+        avgHr: interval.average_heartrate ? Math.round(interval.average_heartrate) : undefined,
+        maxHr: interval.max_heartrate ? Math.round(interval.max_heartrate) : undefined,
+      }
+
+      // Convert duration to MM:SS format
+      const d = row.duration
+      row.duration = `${Math.floor(d / 60)}:${(d % 60).toString().padStart(2, '0')}`
+
+      if (type === '骑行') {
+        row.laps = (index + 1).toString()
+        row.time = row.duration
+        row.avgPower = interval.average_watts ? Math.round(interval.average_watts) : undefined
+        row.avgCadence = interval.average_cadence ? Math.round(interval.average_cadence) : undefined
+        row.distance = interval.distance ? (interval.distance / 1000).toFixed(2) : undefined
+      }
+
+      if (type === '跑步') {
+        row.cadence = interval.average_cadence ? Math.round(interval.average_cadence * 2) : undefined
+        // Calculate interval pace
+        if (interval.distance && d) {
+          const paceSecs = d / (interval.distance / 1000)
+          const pMin = Math.floor(paceSecs / 60)
+          const pSec = Math.round(paceSecs % 60)
+          row.pace = `${pMin}:${pSec.toString().padStart(2, '0')}`
+        }
+      }
+
+      return cleanUndefined(row)
+    })
+
+    if (intervals.length > 0) {
+      return {
+        type: 'intervals',
+        data: baseStats,
+        intervals: intervals,
+        columns: type === '跑步'
+          ? ['label', 'duration', 'pace', 'cadence', 'avgHr', 'maxHr']
+          : type === '骑行'
+            ? ['laps', 'time', 'distance', 'avgPower', 'avgHr', 'avgCadence']
+            : Object.keys(intervals[0])
+      }
     }
   }
 
-  return undefined
+  return {
+    type: 'simple',
+    data: baseStats
+  }
+}
+
+/**
+ * Remove undefined values from object
+ */
+function cleanUndefined(obj: Record<string, any>): Record<string, any> {
+  const cleaned: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined && value !== null) {
+      cleaned[key] = value
+    }
+  }
+  return cleaned
 }
 

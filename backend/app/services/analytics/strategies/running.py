@@ -30,8 +30,7 @@ class RunningStrategy(ActivityStrategy):
         - avg_hr, max_hr
         - avg_pace (min/km)
         - hr_drift_pct
-        - tss (estimated from RPE or duration)
-        - rpe_reported
+        - tss
         - completion_rate
         """
         stats: Dict[str, Any] = {}
@@ -72,11 +71,6 @@ class RunningStrategy(ActivityStrategy):
         tss = activity.summary.get("tss")
         if tss:
             stats["tss"] = tss
-        elif activity.summary.get("rpe"):
-            stats["tss"] = self._estimate_tss_from_rpe(
-                activity.duration_seconds / 60,
-                activity.summary["rpe"]
-            )
         else:
             # Basic estimation from duration and intensity
             stats["tss"] = self._estimate_running_tss(
@@ -84,10 +78,6 @@ class RunningStrategy(ActivityStrategy):
                 stats.get("avg_hr"),
                 stats.get("avg_pace")
             )
-        
-        # RPE
-        if "rpe" in activity.summary:
-            stats["rpe_reported"] = activity.summary["rpe"]
         
         stats["completion_rate"] = None
         

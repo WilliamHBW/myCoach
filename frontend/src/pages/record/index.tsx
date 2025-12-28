@@ -240,7 +240,6 @@ export default function RecordList() {
       日期: record.data.date,
       类型: record.data.type,
       时长: record.data.duration ? `${record.data.duration}分钟` : '',
-      RPE: record.data.rpe || '',
       心率: record.data.heartRate || '',
       备注: record.data.notes || '',
       来源: record.data.source || '手动记录',
@@ -291,7 +290,6 @@ export default function RecordList() {
       date: record.data.date,
       type: record.data.type,
       duration: record.data.duration,
-      rpe: record.data.rpe,
       heartRate: record.data.heartRate,
       notes: record.data.notes,
       source: record.data.source || 'manual',
@@ -480,7 +478,6 @@ export default function RecordList() {
               </div>
               
               <div className='card-stats'>
-                {record.data.rpe && <span className='stat'>RPE: {record.data.rpe}</span>}
                 {record.data.heartRate && <span className='stat'>心率: {record.data.heartRate}</span>}
                 {!record.data.duration && !record.data.heartRate && record.data.source === 'intervals.icu' && (
                   <span className='stat hint'>来自 Intervals.icu 同步</span>
@@ -583,19 +580,6 @@ export default function RecordList() {
                           onChange={(e) => handleEditChange(field.id, e.target.value)}
                           placeholder={field.placeholder}
                         />
-                      )}
-                      {field.type === 'slider' && (
-                        <div className='slider-container'>
-                          <input
-                            type='range'
-                            min={field.min || 1}
-                            max={field.max || 10}
-                            value={editFormData[field.id] || field.defaultValue || 5}
-                            onChange={(e) => handleEditChange(field.id, Number(e.target.value))}
-                            className='range-input'
-                          />
-                          <span className='slider-value'>{editFormData[field.id] || field.defaultValue || 5}</span>
-                        </div>
                       )}
                       {field.type === 'textarea' && (
                         <textarea
