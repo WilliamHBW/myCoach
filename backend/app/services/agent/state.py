@@ -28,6 +28,7 @@ class AgentState(TypedDict, total=False):
     # Plan context
     plan_data: dict[str, Any]
     user_profile: dict[str, Any]
+    start_date: Optional[str]
     
     # Record context
     record_id: Optional[str]
@@ -159,7 +160,8 @@ def create_initial_state(request: AgentRequest) -> AgentState:
         session_id=request.session_id,
         plan_id=request.plan_id,
         plan_data=request.plan_data or {},
-        user_profile=request.user_profile or request.plan_data.get("userProfile", {}) if request.plan_data else {},
+        user_profile=request.user_profile or (request.plan_data or {}).get("userProfile", {}),
+        start_date=request.start_date,
         record_id=request.record_id,
         record_data=request.record_data,
         user_message=request.user_message or "",
