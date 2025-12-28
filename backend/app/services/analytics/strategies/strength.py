@@ -4,6 +4,7 @@ Strength Strategy - Statistics calculation for strength/gym activities.
 Strength-specific metrics:
 - Set/rep tracking
 - Volume load (sets × reps × weight)
+- TRIMP (Training Impulse) for training load
 """
 from typing import Any, Dict, List, Optional
 
@@ -20,6 +21,10 @@ class StrengthStrategy(ActivityStrategy):
     
     activity_type = "strength"
     
+    # Default physiological parameters for TRIMP calculation
+    DEFAULT_HR_REST = 60
+    DEFAULT_HR_MAX = 190
+    
     def compute_level1(self, activity: NormalizedActivity) -> Dict[str, Any]:
         """
         Compute Level 1 strength statistics.
@@ -28,7 +33,7 @@ class StrengthStrategy(ActivityStrategy):
         - duration_min
         - avg_hr (if available, from wearable)
         - max_hr
-        - tss
+        - trimp (Training Impulse)
         - completion_rate
         - total_sets (if interval data available)
         """
@@ -43,11 +48,15 @@ class StrengthStrategy(ActivityStrategy):
         if "max_hr" in activity.summary:
             stats["max_hr"] = activity.summary["max_hr"]
         
-        if activity.summary.get("tss"):
-            stats["tss"] = activity.summary["tss"]
-        else:
-            # Default estimation for strength training based on duration
-            stats["tss"] = round((activity.duration_seconds / 60) * 3, 1)
+        # TRIMP (Training Impulse) - Banister model
+        trimp = self._calculate_trimp(
+            duration_min=activity.duration_seconds / 60,
+            avg_hr=stats.get("avg_hr"),
+            hr_rest=self.DEFAULT_HR_REST,
+            hr_max=self.DEFAULT_HR_MAX
+        )
+        if trimp is not None:
+            stats["trimp"] = trimp
         
         # Set count from intervals
         if activity.has_intervals():

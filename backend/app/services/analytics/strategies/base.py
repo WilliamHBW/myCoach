@@ -1,6 +1,7 @@
 """
 Base Strategy - Abstract interface for activity-specific calculations.
 """
+import math
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -258,4 +259,61 @@ class ActivityStrategy(ABC):
             cumulative_time += interval.duration_seconds
         
         return None
+    
+    def _calculate_trimp(
+        self,
+        duration_min: float,
+        avg_hr: Optional[float],
+        hr_rest: float = 60.0,
+        hr_max: float = 190.0,
+        gender: str = "male"
+    ) -> Optional[float]:
+        """
+        Calculate TRIMP (Training Impulse) using Banister model.
+        
+        Formula: TRIMP = t × ΔHR_ratio × Y
+        Where:
+            - t: duration in minutes
+            - ΔHR_ratio = (HR_exercise - HR_rest) / (HR_max - HR_rest)
+            - Y: weighting factor based on gender
+              - Male: Y = 0.64 × e^(1.92 × ΔHR_ratio)
+              - Female: Y = 0.86 × e^(1.67 × ΔHR_ratio)
+        
+        Args:
+            duration_min: Training duration in minutes
+            avg_hr: Average heart rate during exercise
+            hr_rest: Resting heart rate (default 60)
+            hr_max: Maximum heart rate (default 190)
+            gender: "male" or "female" (default "male")
+            
+        Returns:
+            TRIMP value or None if insufficient data
+        """
+        if not avg_hr or duration_min <= 0:
+            return None
+        
+        # Ensure avg_hr is within valid range
+        if avg_hr <= hr_rest:
+            return None
+        if avg_hr > hr_max:
+            avg_hr = hr_max
+        
+        # Calculate ΔHR ratio
+        hr_range = hr_max - hr_rest
+        if hr_range <= 0:
+            return None
+        
+        delta_hr_ratio = (avg_hr - hr_rest) / hr_range
+        
+        # Calculate Y (weighting factor) based on gender
+        if gender.lower() == "female":
+            y = 0.86 * math.exp(1.67 * delta_hr_ratio)
+        else:
+            # Default to male formula
+            y = 0.64 * math.exp(1.92 * delta_hr_ratio)
+        
+        # Calculate TRIMP
+        trimp = duration_min * delta_hr_ratio * y
+        
+        return round(trimp, 1)
 

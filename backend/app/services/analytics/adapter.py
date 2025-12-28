@@ -44,7 +44,7 @@ class NormalizedActivity:
     # Summary metrics (may be partially filled depending on source)
     summary: Dict[str, Any] = field(default_factory=dict)
     # Keys: avg_hr, max_hr, avg_power, max_power, normalized_power,
-    #       avg_pace, distance_km, elevation_m, calories, tss
+    #       avg_pace, distance_km, elevation_m, calories
     
     # Interval/segment data
     intervals: List[IntervalData] = field(default_factory=list)
@@ -144,7 +144,7 @@ class IntervalsAdapter(RawDataAdapter):
     Intervals.icu provides rich structured data including:
     - Activity summary with power/HR metrics
     - Interval segments with targets and actuals
-    - TSS, IF, VI calculations
+    - IF, VI calculations
     """
     
     source_name = "intervals"
@@ -213,12 +213,6 @@ class IntervalsAdapter(RawDataAdapter):
             summary["max_power"] = raw_data["max_watts"]
         if "weighted_average_watts" in raw_data:
             summary["normalized_power"] = raw_data["weighted_average_watts"]
-        
-        # TSS and related
-        if "suffer_score" in raw_data:
-            summary["tss"] = raw_data["suffer_score"]
-        elif "training_load" in raw_data:
-            summary["tss"] = raw_data["training_load"]
         
         # Distance
         if "distance" in raw_data:
@@ -349,8 +343,6 @@ class StravaAdapter(RawDataAdapter):
             summary["distance_km"] = raw_data["distance"] / 1000
         if "total_elevation_gain" in raw_data:
             summary["elevation_m"] = raw_data["total_elevation_gain"]
-        if "suffer_score" in raw_data:
-            summary["tss"] = raw_data["suffer_score"]
         
         return summary
     
@@ -478,8 +470,6 @@ class ManualAdapter(RawDataAdapter):
                 summary["avg_power"] = pro_data["avgPower"]
             if "normalizedPower" in pro_data:
                 summary["normalized_power"] = pro_data["normalizedPower"]
-            if "tss" in pro_data:
-                summary["tss"] = pro_data["tss"]
             if "maxHr" in pro_data:
                 summary["max_hr"] = pro_data["maxHr"]
         

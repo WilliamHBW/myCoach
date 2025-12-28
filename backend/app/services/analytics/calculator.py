@@ -224,8 +224,8 @@ class StatsCalculator:
             lines.append(f"- 功率心率比: {l1['power_hr_ratio']}")
         if "hr_drift_pct" in l1:
             lines.append(f"- 心率漂移: {l1['hr_drift_pct']}%")
-        if "tss" in l1:
-            lines.append(f"- 训练压力得分 (TSS): {l1['tss']}")
+        if "trimp" in l1:
+            lines.append(f"- 训练冲量 (TRIMP): {l1['trimp']}")
         
         # Level 2 interval summary
         l2 = stats.level2_stats

@@ -2,8 +2,9 @@
 Cycling Strategy - Statistics calculation for cycling activities.
 
 Cycling-specific metrics:
-- Power-based metrics (NP, IF, TSS, VI)
+- Power-based metrics (NP, IF, VI)
 - Power/HR ratio (efficiency)
+- TRIMP (Training Impulse) for training load
 - Power drops and fatigue detection
 """
 from typing import Any, Dict, List, Optional
@@ -21,8 +22,9 @@ class CyclingStrategy(ActivityStrategy):
     
     activity_type = "cycling"
     
-    # Default FTP for TSS calculation when not known
-    DEFAULT_FTP = 200
+    # Default physiological parameters for TRIMP calculation
+    DEFAULT_HR_REST = 60
+    DEFAULT_HR_MAX = 190
     
     def compute_level1(self, activity: NormalizedActivity) -> Dict[str, Any]:
         """
@@ -34,7 +36,7 @@ class CyclingStrategy(ActivityStrategy):
         - avg_power, normalized_power
         - power_hr_ratio
         - hr_drift_pct
-        - tss
+        - trimp (Training Impulse)
         - completion_rate
         """
         stats: Dict[str, Any] = {}
@@ -71,17 +73,15 @@ class CyclingStrategy(ActivityStrategy):
         if hr_drift is not None:
             stats["hr_drift_pct"] = hr_drift
         
-        # TSS
-        tss = activity.summary.get("tss")
-        if tss:
-            stats["tss"] = tss
-        elif np:
-            # Calculate TSS from NP
-            stats["tss"] = self._calculate_tss(
-                activity.duration_seconds,
-                np,
-                self.DEFAULT_FTP
-            )
+        # TRIMP (Training Impulse) - Banister model
+        trimp = self._calculate_trimp(
+            duration_min=activity.duration_seconds / 60,
+            avg_hr=stats.get("avg_hr"),
+            hr_rest=self.DEFAULT_HR_REST,
+            hr_max=self.DEFAULT_HR_MAX
+        )
+        if trimp is not None:
+            stats["trimp"] = trimp
         
         # Completion rate (if planned duration is known)
         # For now, we don't have planned duration from raw data
@@ -214,25 +214,4 @@ class CyclingStrategy(ActivityStrategy):
         )
         
         return round(weighted_power4 ** 0.25, 1)
-    
-    def _calculate_tss(
-        self,
-        duration_seconds: int,
-        normalized_power: float,
-        ftp: float
-    ) -> float:
-        """
-        Calculate Training Stress Score.
-        
-        TSS = (duration_seconds * NP * IF) / (FTP * 3600) * 100
-        where IF (Intensity Factor) = NP / FTP
-        """
-        if ftp == 0:
-            return 0.0
-        
-        intensity_factor = normalized_power / ftp
-        
-        tss = (duration_seconds * normalized_power * intensity_factor) / (ftp * 3600) * 100
-        
-        return round(tss, 1)
 

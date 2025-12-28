@@ -4,6 +4,7 @@ Running Strategy - Statistics calculation for running activities.
 Running-specific metrics:
 - Pace-based metrics
 - Heart rate zones
+- TRIMP (Training Impulse) for training load
 - Cardiac drift analysis
 """
 from typing import Any, Dict, List, Optional
@@ -21,6 +22,10 @@ class RunningStrategy(ActivityStrategy):
     
     activity_type = "running"
     
+    # Default physiological parameters for TRIMP calculation
+    DEFAULT_HR_REST = 60
+    DEFAULT_HR_MAX = 190
+    
     def compute_level1(self, activity: NormalizedActivity) -> Dict[str, Any]:
         """
         Compute Level 1 running statistics.
@@ -30,7 +35,7 @@ class RunningStrategy(ActivityStrategy):
         - avg_hr, max_hr
         - avg_pace (min/km)
         - hr_drift_pct
-        - tss
+        - trimp (Training Impulse)
         - completion_rate
         """
         stats: Dict[str, Any] = {}
@@ -67,17 +72,15 @@ class RunningStrategy(ActivityStrategy):
         if hr_drift is not None:
             stats["hr_drift_pct"] = hr_drift
         
-        # TSS estimation for running
-        tss = activity.summary.get("tss")
-        if tss:
-            stats["tss"] = tss
-        else:
-            # Basic estimation from duration and intensity
-            stats["tss"] = self._estimate_running_tss(
-                activity.duration_seconds / 60,
-                stats.get("avg_hr"),
-                stats.get("avg_pace")
-            )
+        # TRIMP (Training Impulse) - Banister model
+        trimp = self._calculate_trimp(
+            duration_min=activity.duration_seconds / 60,
+            avg_hr=stats.get("avg_hr"),
+            hr_rest=self.DEFAULT_HR_REST,
+            hr_max=self.DEFAULT_HR_MAX
+        )
+        if trimp is not None:
+            stats["trimp"] = trimp
         
         stats["completion_rate"] = None
         
@@ -173,31 +176,6 @@ class RunningStrategy(ActivityStrategy):
     # ========================================
     # Running-specific helpers
     # ========================================
-    
-    def _estimate_running_tss(
-        self,
-        duration_min: float,
-        avg_hr: Optional[float],
-        avg_pace: Optional[float]
-    ) -> float:
-        """
-        Estimate running TSS (rTSS) without power data.
-        
-        Uses a simplified intensity estimation based on HR or pace.
-        """
-        if duration_min <= 0:
-            return 0.0
-        
-        # Default intensity factor
-        intensity = 0.7
-        
-        # Adjust based on average HR if available
-        if avg_hr:
-            # Assume max HR ~190, threshold HR ~170
-            intensity = min(1.0, avg_hr / 170)
-        
-        # Running TSS formula (simplified)
-        return round(duration_min * (intensity ** 2) * 10, 1)
     
     def _calculate_hr_zone_distribution(
         self,

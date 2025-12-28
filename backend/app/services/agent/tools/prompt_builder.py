@@ -349,11 +349,11 @@ class PromptBuilder:
             drift_status = "正常" if abs(drift) < 5 else ("偏高" if drift > 0 else "异常")
             lines.append(f"- **心率漂移:** {drift:.1f}% ({drift_status})")
         
-        # TSS
-        if "tss" in stats:
-            tss = stats['tss']
-            tss_level = self._categorize_tss(tss)
-            lines.append(f"- **训练压力得分 (TSS):** {tss:.1f} ({tss_level})")
+        # TRIMP
+        if "trimp" in stats:
+            trimp = stats['trimp']
+            trimp_level = self._categorize_trimp(trimp)
+            lines.append(f"- **训练冲量 (TRIMP):** {trimp:.1f} ({trimp_level})")
         
         # Completion rate
         if stats.get("completion_rate") is not None:
@@ -368,15 +368,15 @@ class PromptBuilder:
         
         return lines
     
-    def _categorize_tss(self, tss: float) -> str:
-        """Categorize TSS level."""
-        if tss < 50:
+    def _categorize_trimp(self, trimp: float) -> str:
+        """Categorize TRIMP level based on Banister model."""
+        if trimp < 50:
             return "轻松"
-        elif tss < 100:
+        elif trimp < 100:
             return "中等"
-        elif tss < 150:
+        elif trimp < 150:
             return "较高"
-        elif tss < 200:
+        elif trimp < 200:
             return "高强度"
         else:
             return "极高"

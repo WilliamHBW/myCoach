@@ -77,8 +77,8 @@ class WorkoutStats(Base):
     # Indexes for JSONB queries
     __table_args__ = (
         Index(
-            'ix_workout_stats_level1_tss',
-            level1_stats['tss'].astext,
+            'ix_workout_stats_level1_trimp',
+            level1_stats['trimp'].astext,
             postgresql_using='btree'
         ),
     )
@@ -106,7 +106,7 @@ class WorkoutStats(Base):
         
         # Extract key metrics from level1
         if self.level1_stats:
-            for key in ["duration_min", "avg_hr", "tss", "completion_rate"]:
+            for key in ["duration_min", "avg_hr", "trimp", "completion_rate"]:
                 if key in self.level1_stats:
                     summary[key] = self.level1_stats[key]
         
