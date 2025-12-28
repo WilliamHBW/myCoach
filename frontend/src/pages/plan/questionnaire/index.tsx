@@ -184,8 +184,18 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: value }))
   }
 
-  // Check if we should skip the level question (skip when user has data, regardless of report status)
-  const shouldSkipLevel = hasData
+  // Check if we should skip the level question (only skip when report is ready)
+  const shouldSkipLevel = hasData && !!fitnessReport?.report && !reportError
+  
+  // Auto-jump to next step if report becomes ready while on the level question
+  useEffect(() => {
+    if (currentStep === LEVEL_QUESTION_INDEX && shouldSkipLevel) {
+      const timer = setTimeout(() => {
+        setCurrentStep(LEVEL_QUESTION_INDEX + 1)
+      }, 2000) // Small delay to let user see the report
+      return () => clearTimeout(timer)
+    }
+  }, [currentStep, shouldSkipLevel])
   
   const handleNext = () => {
     // 确认步骤直接提交
@@ -446,13 +456,45 @@ export default function Questionnaire() {
 
             {currentQuestion?.type === 'text' && (
               <div className='input-container'>
-                <textarea
-                  className='text-input'
-                  placeholder={currentQuestion.placeholder}
-                  value={answers[currentQuestion.id] || ''}
-                  onChange={(e) => handleTextInput(e.target.value)}
-                  maxLength={200}
-                />
+                {currentQuestion.id === 'level' && hasData ? (
+                  <div className='level-report-status'>
+                    {isLoadingReport ? (
+                      <div className='report-generation-loading'>
+                        <div className='spinner'></div>
+                        <p>AI 正在分析您的运动历史数据...</p>
+                        <p className='hint'>生成完成后将为您自动填写此项</p>
+                      </div>
+                    ) : fitnessReport?.report ? (
+                      <div className='report-generation-success'>
+                        <div className='success-icon'>✓</div>
+                        <p>运动能力评估已生成！</p>
+                        <div className='report-preview'>
+                          {fitnessReport.report}
+                        </div>
+                        <p className='hint'>即将自动进入下一题...</p>
+                      </div>
+                    ) : (
+                      <div className='report-generation-manual'>
+                        <p className='hint'>无法自动生成报告，请手动评估您的运动水平：</p>
+                        <textarea
+                          className='text-input'
+                          placeholder={currentQuestion.placeholder}
+                          value={answers[currentQuestion.id] || ''}
+                          onChange={(e) => handleTextInput(e.target.value)}
+                          maxLength={200}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    className='text-input'
+                    placeholder={currentQuestion.placeholder}
+                    value={answers[currentQuestion.id] || ''}
+                    onChange={(e) => handleTextInput(e.target.value)}
+                    maxLength={200}
+                  />
+                )}
               </div>
             )}
           </>

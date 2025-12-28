@@ -75,7 +75,7 @@ export interface DayWithDuration {
 }
 
 export interface UserProfile {
-  [key: string]: string | string[] | number | DayWithDuration[]
+  [key: string]: string | string[] | number | DayWithDuration[] | boolean
 }
 
 export interface TrainingDay {
