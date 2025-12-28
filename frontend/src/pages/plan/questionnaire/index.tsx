@@ -74,12 +74,21 @@ export default function Questionnaire() {
       
       recordApi.generateFitnessReport()
         .then((report) => {
+          console.log('[Fitness Report] Received report:', {
+            hasData: report.hasData,
+            recordCount: report.recordCount,
+            hasReport: !!report.report,
+            reportLength: report.report?.length,
+            reportPreview: report.report?.substring(0, 100)
+          })
           setFitnessReport(report)
           if (report.report) {
             // Update with AI report
+            console.log('[Fitness Report] Setting AI-generated report to answers.level')
             setAnswers(prev => ({ ...prev, level: report.report }))
           } else {
             // No report content, use summary-based default
+            console.warn('[Fitness Report] No AI report content, using fallback')
             setAnswers(prev => ({ 
               ...prev, 
               level: `根据您的 ${report.recordCount} 条运动记录，系统将自动评估您的运动能力。` 
@@ -87,7 +96,7 @@ export default function Questionnaire() {
           }
         })
         .catch((e) => {
-          console.error('Failed to generate fitness report:', e)
+          console.error('[Fitness Report] Failed to generate fitness report:', e)
           setReportError(e.message || '生成报告失败')
           // Use fallback answer on error
           setAnswers(prev => ({ 
@@ -254,6 +263,7 @@ export default function Questionnaire() {
   const handleSubmit = async () => {
     // If fitness report is still loading, wait for it to complete
     if (hasData && isLoadingReportRef.current) {
+      console.log('[Submit] Waiting for fitness report to complete...')
       showLoading('正在等待运动能力评估完成...')
       
       // Wait for report to finish loading (poll every 300ms, max 60s)
@@ -270,8 +280,10 @@ export default function Questionnaire() {
       
       // If still loading after max wait, continue anyway with fallback
       if (isLoadingReportRef.current) {
-        console.warn('Fitness report generation timed out, proceeding with fallback')
+        console.warn('[Submit] Fitness report generation timed out, proceeding with fallback')
         showToast('评估报告生成超时，将使用默认评估', 'warning')
+      } else {
+        console.log('[Submit] Fitness report completed, current level:', answersRef.current.level?.substring(0, 100))
       }
     }
     
@@ -286,6 +298,11 @@ export default function Questionnaire() {
       // True if user has data (even if AI report generation failed, we use fallback)
       levelFromReport: hasData
     }
+
+    console.log('[Submit] Generating plan with userProfile:', {
+      ...userProfile,
+      level: userProfile.level?.substring(0, 100) + '...'
+    })
 
     setGenerating(true)
     showLoading('AI 教练正在为您规划...')
