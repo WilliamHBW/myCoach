@@ -1,0 +1,58 @@
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915466623,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766915466623,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Plan:handleCreate:start","message":"handleCreate started","timestamp":1766915469759,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Plan:handleCreate:checkData","message":"hasWorkoutData result","data":{"hasData":true},"timestamp":1766915469805,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915469807,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766915469807,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":1,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915475966,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":2,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915481910,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":3,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915484774,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":4,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915487411,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":5,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915495774,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:atLevelQuestion","message":"Currently at Level Question step","data":{"hasData":true,"hasReport":false},"timestamp":1766915495775,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":6,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915498240,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":7,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915502708,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":8,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915505874,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":9,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915508278,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":10,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915510941,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915730180,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766915730180,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:fetchReport:error","message":"Report generation failed","data":{"error":"[object Object]"},"timestamp":1766915730184,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Plan:handleCreate:start","message":"handleCreate started","timestamp":1766915734811,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Plan:handleCreate:checkData","message":"hasWorkoutData result","data":{"hasData":true},"timestamp":1766915734843,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915734844,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766915734844,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:fetchReport:error","message":"Report generation failed","data":{"error":"[object Object]"},"timestamp":1766915734849,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":1,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915738723,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":2,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915741589,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":3,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915744608,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":4,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915746924,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":5,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915753190,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:atLevelQuestion","message":"Currently at Level Question step","data":{"hasData":true,"hasReport":false},"timestamp":1766915753191,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Plan:handleCreate:start","message":"handleCreate started","timestamp":1766915786706,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Plan:handleCreate:checkData","message":"hasWorkoutData result","data":{"hasData":true},"timestamp":1766915786740,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915786743,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766915786743,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:fetchReport:error","message":"Report generation failed","data":{"error":"[object Object]"},"timestamp":1766915786749,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":1,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915789957,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":2,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915792114,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":3,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915793974,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":4,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915796241,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":5,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915800939,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:atLevelQuestion","message":"Currently at Level Question step","data":{"hasData":true,"hasReport":false},"timestamp":1766915800941,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":6,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915810710,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":7,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915813391,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":8,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915816030,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":9,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915817890,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":10,"LEVEL_QUESTION_INDEX":6},"timestamp":1766915819885,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Plan:handleCreate:start","message":"handleCreate started","timestamp":1766916054861,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Plan:handleCreate:checkData","message":"hasWorkoutData result","data":{"hasData":true},"timestamp":1766916054894,"sessionId":"debug-session","hypothesisId":"flow"}
+{"location":"Questionnaire:mount","message":"Questionnaire mounted","data":{"hasData":true,"currentStep":0,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916054895,"sessionId":"debug-session","hypothesisId":"initial"}
+{"location":"Questionnaire:fetchReport:start","message":"Starting report generation","data":{"hasData":true},"timestamp":1766916054895,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:fetchReport:error","message":"Report generation failed","data":{"error":"[object Object]"},"timestamp":1766916054898,"sessionId":"debug-session","hypothesisId":"H1"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":1,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916058425,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":2,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916061046,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":3,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916062981,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":4,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916065840,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:handleNext","message":"handleNext called","data":{"currentStep":5,"LEVEL_QUESTION_INDEX":6},"timestamp":1766916070303,"sessionId":"debug-session","hypothesisId":"H1_H3"}
+{"location":"Questionnaire:atLevelQuestion","message":"Currently at Level Question step","data":{"hasData":true,"hasReport":false},"timestamp":1766916070304,"sessionId":"debug-session","hypothesisId":"H1_H3"}

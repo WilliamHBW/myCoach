@@ -79,6 +79,141 @@ class FitnessReportResponse(BaseModel):
 
 
 # ========================================
+# Helper Functions (Internal)
+# ========================================
+
+def _build_fitness_summary(records: list[WorkoutRecord]) -> dict[str, Any]:
+    """Build statistical summary from workout records."""
+    now = datetime.now()
+    thirty_days_ago = now - timedelta(days=30)
+    
+    # Filter recent records (last 30 days)
+    recent_records = [
+        r for r in records 
+        if r.created_at >= thirty_days_ago
+    ]
+    
+    # Activity type distribution
+    activity_types = []
+    total_duration = 0
+    total_heart_rate_sum = 0
+    heart_rate_count = 0
+    total_trimp = 0
+    trimp_count = 0
+    
+    for record in recent_records:
+        data = record.data or {}
+        
+        # Activity type
+        activity_type = data.get("type") or data.get("sport_type") or "unknown"
+        activity_types.append(activity_type)
+        
+        # Duration
+        duration = data.get("duration") or data.get("moving_time") or 0
+        if isinstance(duration, str):
+            try:
+                duration = int(duration)
+            except ValueError:
+                duration = 0
+        total_duration += duration
+        
+        # Heart rate
+        hr = data.get("heartRate") or data.get("average_heartrate")
+        if hr:
+            try:
+                total_heart_rate_sum += float(hr)
+                heart_rate_count += 1
+            except (ValueError, TypeError):
+                pass
+        
+        # TRIMP / Training load
+        trimp = (
+            data.get("trimp") or 
+            data.get("suffer_score") or 
+            data.get("icu_training_load")
+        )
+        if trimp:
+            try:
+                total_trimp += float(trimp)
+                trimp_count += 1
+            except (ValueError, TypeError):
+                pass
+    
+    # Calculate statistics
+    type_counter = Counter(activity_types)
+    type_distribution = dict(type_counter.most_common(5))
+    
+    avg_duration = total_duration / len(recent_records) if recent_records else 0
+    avg_heart_rate = total_heart_rate_sum / heart_rate_count if heart_rate_count > 0 else None
+    avg_trimp = total_trimp / trimp_count if trimp_count > 0 else None
+    
+    # Weekly frequency
+    weeks_span = max(1, (now - thirty_days_ago).days / 7)
+    weekly_frequency = len(recent_records) / weeks_span
+    
+    return {
+        "period_days": 30,
+        "total_records": len(records),
+        "recent_records": len(recent_records),
+        "weekly_frequency": round(weekly_frequency, 1),
+        "activity_type_distribution": type_distribution,
+        "total_duration_minutes": round(total_duration),
+        "avg_duration_minutes": round(avg_duration),
+        "avg_heart_rate": round(avg_heart_rate) if avg_heart_rate else None,
+        "avg_trimp": round(avg_trimp, 1) if avg_trimp else None,
+    }
+
+
+async def _generate_ai_fitness_report(summary: dict[str, Any]) -> str:
+    """Generate AI fitness report based on summary statistics."""
+    adapter = get_ai_adapter()
+    
+    # Build user prompt with summary data
+    summary_text = f"""### 用户运动数据统计（最近30天）
+
+- **总记录数**：{summary['total_records']} 条（近30天：{summary['recent_records']} 条）
+- **每周训练频率**：{summary['weekly_frequency']} 次/周
+- **运动类型分布**：{summary['activity_type_distribution']}
+- **总训练时长**：{summary['total_duration_minutes']} 分钟
+- **平均每次训练时长**：{summary['avg_duration_minutes']} 分钟
+"""
+    
+    if summary.get('avg_heart_rate'):
+        summary_text += f"- **平均心率**：{summary['avg_heart_rate']} bpm\n"
+    
+    if summary.get('avg_trimp'):
+        summary_text += f"- **平均TRIMP训练冲量**：{summary['avg_trimp']}\n"
+    
+    summary_text += "\n请根据以上数据生成运动能力评估报告。"
+    
+    messages = [
+        ChatMessage(role="system", content=SYSTEM_PROMPT),
+        ChatMessage(role="user", content=FITNESS_REPORT_PROMPT + "\n\n" + summary_text),
+    ]
+    
+    with debug_logger.track_call(
+        provider=settings.AI_PROVIDER,
+        model=adapter.model,
+        endpoint="fitness_report"
+    ) as call:
+        call.add_messages([m.to_dict() for m in messages])
+        
+        response = await adapter.chat_completion(
+            messages=messages,
+            temperature=0.7
+        )
+        
+        call.set_response(
+            content=response.content,
+            prompt_tokens=response.prompt_tokens,
+            completion_tokens=response.completion_tokens,
+            total_tokens=response.total_tokens
+        )
+    
+    return response.content
+
+
+# ========================================
 # API Endpoints
 # ========================================
 
@@ -141,6 +276,58 @@ async def list_records(
         )
         for record in records
     ]
+
+
+@router.get("/fitness-report", response_model=FitnessReportResponse)
+async def generate_fitness_report(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate a fitness assessment report based on user's workout history.
+    
+    Analyzes all workout records and uses AI to generate a comprehensive
+    fitness level assessment that can be used for plan creation.
+    """
+    logger.info("Generating fitness report")
+    
+    # Fetch all workout records
+    result = await db.execute(
+        select(WorkoutRecord).order_by(WorkoutRecord.created_at.desc())
+    )
+    records = list(result.scalars().all())
+    
+    if not records:
+        return FitnessReportResponse(
+            hasData=False,
+            recordCount=0,
+            report=None,
+            summary=None
+        )
+    
+    # Build statistical summary
+    summary = _build_fitness_summary(records)
+    
+    # Generate AI report
+    try:
+        report = await _generate_ai_fitness_report(summary)
+    except Exception as e:
+        logger.error("Failed to generate AI fitness report", error=str(e))
+        # Return summary without AI report if generation fails
+        return FitnessReportResponse(
+            hasData=True,
+            recordCount=len(records),
+            report=None,
+            summary=summary
+        )
+    
+    logger.info("Fitness report generated", record_count=len(records))
+    
+    return FitnessReportResponse(
+        hasData=True,
+        recordCount=len(records),
+        report=report,
+        summary=summary
+    )
 
 
 @router.get("/{record_id}", response_model=RecordResponse)
@@ -325,186 +512,3 @@ async def analyze_record(
     except Exception as e:
         logger.error("Analysis error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/fitness-report", response_model=FitnessReportResponse)
-async def generate_fitness_report(
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Generate a fitness assessment report based on user's workout history.
-    
-    Analyzes all workout records and uses AI to generate a comprehensive
-    fitness level assessment that can be used for plan creation.
-    """
-    logger.info("Generating fitness report")
-    
-    # Fetch all workout records
-    result = await db.execute(
-        select(WorkoutRecord).order_by(WorkoutRecord.created_at.desc())
-    )
-    records = list(result.scalars().all())
-    
-    if not records:
-        return FitnessReportResponse(
-            hasData=False,
-            recordCount=0,
-            report=None,
-            summary=None
-        )
-    
-    # Build statistical summary
-    summary = _build_fitness_summary(records)
-    
-    # Generate AI report
-    try:
-        report = await _generate_ai_fitness_report(summary)
-    except Exception as e:
-        logger.error("Failed to generate AI fitness report", error=str(e))
-        # Return summary without AI report if generation fails
-        return FitnessReportResponse(
-            hasData=True,
-            recordCount=len(records),
-            report=None,
-            summary=summary
-        )
-    
-    logger.info("Fitness report generated", record_count=len(records))
-    
-    return FitnessReportResponse(
-        hasData=True,
-        recordCount=len(records),
-        report=report,
-        summary=summary
-    )
-
-
-def _build_fitness_summary(records: list[WorkoutRecord]) -> dict[str, Any]:
-    """Build statistical summary from workout records."""
-    now = datetime.now()
-    thirty_days_ago = now - timedelta(days=30)
-    
-    # Filter recent records (last 30 days)
-    recent_records = [
-        r for r in records 
-        if r.created_at >= thirty_days_ago
-    ]
-    
-    # Activity type distribution
-    activity_types = []
-    total_duration = 0
-    total_heart_rate_sum = 0
-    heart_rate_count = 0
-    total_trimp = 0
-    trimp_count = 0
-    
-    for record in recent_records:
-        data = record.data or {}
-        
-        # Activity type
-        activity_type = data.get("type") or data.get("sport_type") or "unknown"
-        activity_types.append(activity_type)
-        
-        # Duration
-        duration = data.get("duration") or data.get("moving_time") or 0
-        if isinstance(duration, str):
-            try:
-                duration = int(duration)
-            except ValueError:
-                duration = 0
-        total_duration += duration
-        
-        # Heart rate
-        hr = data.get("heartRate") or data.get("average_heartrate")
-        if hr:
-            try:
-                total_heart_rate_sum += float(hr)
-                heart_rate_count += 1
-            except (ValueError, TypeError):
-                pass
-        
-        # TRIMP / Training load
-        trimp = (
-            data.get("trimp") or 
-            data.get("suffer_score") or 
-            data.get("icu_training_load")
-        )
-        if trimp:
-            try:
-                total_trimp += float(trimp)
-                trimp_count += 1
-            except (ValueError, TypeError):
-                pass
-    
-    # Calculate statistics
-    type_counter = Counter(activity_types)
-    type_distribution = dict(type_counter.most_common(5))
-    
-    avg_duration = total_duration / len(recent_records) if recent_records else 0
-    avg_heart_rate = total_heart_rate_sum / heart_rate_count if heart_rate_count > 0 else None
-    avg_trimp = total_trimp / trimp_count if trimp_count > 0 else None
-    
-    # Weekly frequency
-    weeks_span = max(1, (now - thirty_days_ago).days / 7)
-    weekly_frequency = len(recent_records) / weeks_span
-    
-    return {
-        "period_days": 30,
-        "total_records": len(records),
-        "recent_records": len(recent_records),
-        "weekly_frequency": round(weekly_frequency, 1),
-        "activity_type_distribution": type_distribution,
-        "total_duration_minutes": round(total_duration),
-        "avg_duration_minutes": round(avg_duration),
-        "avg_heart_rate": round(avg_heart_rate) if avg_heart_rate else None,
-        "avg_trimp": round(avg_trimp, 1) if avg_trimp else None,
-    }
-
-
-async def _generate_ai_fitness_report(summary: dict[str, Any]) -> str:
-    """Generate AI fitness report based on summary statistics."""
-    adapter = get_ai_adapter()
-    
-    # Build user prompt with summary data
-    summary_text = f"""### 用户运动数据统计（最近30天）
-
-- **总记录数**：{summary['total_records']} 条（近30天：{summary['recent_records']} 条）
-- **每周训练频率**：{summary['weekly_frequency']} 次/周
-- **运动类型分布**：{summary['activity_type_distribution']}
-- **总训练时长**：{summary['total_duration_minutes']} 分钟
-- **平均每次训练时长**：{summary['avg_duration_minutes']} 分钟
-"""
-    
-    if summary.get('avg_heart_rate'):
-        summary_text += f"- **平均心率**：{summary['avg_heart_rate']} bpm\n"
-    
-    if summary.get('avg_trimp'):
-        summary_text += f"- **平均TRIMP训练冲量**：{summary['avg_trimp']}\n"
-    
-    summary_text += "\n请根据以上数据生成运动能力评估报告。"
-    
-    messages = [
-        ChatMessage(role="system", content=SYSTEM_PROMPT),
-        ChatMessage(role="user", content=FITNESS_REPORT_PROMPT + "\n\n" + summary_text),
-    ]
-    
-    with debug_logger.track_call(
-        provider=settings.AI_PROVIDER,
-        model=adapter.model,
-        endpoint="fitness_report"
-    ) as call:
-        call.add_messages([m.to_dict() for m in messages])
-        
-        response = await adapter.chat_completion(
-            messages=messages,
-            temperature=0.7
-        )
-        
-        call.set_response(
-            content=response.content,
-            prompt_tokens=response.prompt_tokens,
-            completion_tokens=response.completion_tokens,
-            total_tokens=response.total_tokens
-        )
-    
-    return response.content

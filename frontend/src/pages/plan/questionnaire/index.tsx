@@ -41,6 +41,11 @@ export default function Questionnaire() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const hasData = searchParams.get('hasData') === 'true'
+    
+  console.log('[Questionnaire] Component initialized', { 
+    hasData, 
+    searchParamsRaw: searchParams.toString() 
+  })
   
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -66,7 +71,14 @@ export default function Questionnaire() {
   
   // Async fetch fitness report if user has data
   useEffect(() => {
+    console.log('[Fitness Report] useEffect triggered', {
+      hasData,
+      hasFitnessReport: !!fitnessReport,
+      isLoadingReport
+    })
+    
     if (hasData && !fitnessReport && !isLoadingReport) {
+      console.log('[Fitness Report] Starting to generate fitness report...')
       // Set a placeholder answer while loading
       setAnswers(prev => ({ ...prev, level: '（AI 正在根据您的运动数据生成能力评估...）' }))
       setIsLoadingReport(true)
@@ -301,7 +313,7 @@ export default function Questionnaire() {
 
     console.log('[Submit] Generating plan with userProfile:', {
       ...userProfile,
-      level: userProfile.level?.substring(0, 100) + '...'
+      level: (userProfile as any).level?.substring(0, 100) + '...'
     })
 
     setGenerating(true)
