@@ -118,10 +118,10 @@ class RawDataAdapter(ABC):
     
     def _map_activity_type(self, raw_type: str) -> str:
         """Map source-specific type to unified type."""
-        cycling_types = ["ride", "cycling", "bike", "virtualride", "indoor_cycling"]
-        running_types = ["run", "running", "virtualrun", "treadmill"]
-        strength_types = ["strength", "weighttraining", "weight_training", "gym"]
-        swimming_types = ["swim", "swimming", "pool_swim", "open_water_swim"]
+        cycling_types = ["ride", "cycling", "bike", "virtualride", "indoor_cycling", "骑行"]
+        running_types = ["run", "running", "virtualrun", "treadmill", "跑步"]
+        strength_types = ["strength", "weighttraining", "weight_training", "gym", "力量训练", "力量"]
+        swimming_types = ["swim", "swimming", "pool_swim", "open_water_swim", "游泳"]
         
         raw_lower = raw_type.lower()
         
@@ -135,6 +135,50 @@ class RawDataAdapter(ABC):
             return "swimming"
         
         return "other"
+
+    def _parse_float(self, val: Any) -> Optional[float]:
+        """Parse string or number to float."""
+        if val is None or val == '-':
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
+    def _parse_pace(self, pace_str: Any) -> Optional[float]:
+        """Parse pace string like '6:22' to decimal minutes (6.37)."""
+        if not pace_str or not isinstance(pace_str, str) or ':' not in pace_str:
+            try:
+                return float(pace_str) if pace_str else None
+            except (ValueError, TypeError):
+                return None
+        
+        try:
+            parts = pace_str.split(':')
+            if len(parts) == 2:
+                return int(parts[0]) + int(parts[1]) / 60
+            return None
+        except (ValueError, IndexError):
+            return None
+
+
+    def _parse_time_to_seconds(self, time_str: Any) -> int:
+        """Parse time string like '13:16' or '419' to seconds."""
+        if not time_str:
+            return 0
+        if isinstance(time_str, (int, float)):
+            return int(time_str)
+        
+        parts = str(time_str).split(':')
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        
+        try:
+            return int(float(time_str))
+        except ValueError:
+            return 0
 
 
 class IntervalsAdapter(RawDataAdapter):
@@ -187,14 +231,17 @@ class IntervalsAdapter(RawDataAdapter):
     
     def _extract_duration(self, raw_data: Dict[str, Any]) -> int:
         """Extract duration in seconds."""
-        # Intervals.icu uses 'moving_time' or 'elapsed_time'
+        # Intervals.icu uses 'moving_time' or 'elapsed_time' (seconds)
         if "moving_time" in raw_data:
             return int(raw_data["moving_time"])
         if "elapsed_time" in raw_data:
             return int(raw_data["elapsed_time"])
-        if "duration" in raw_data:
-            return int(raw_data["duration"])
-        return 0
+        
+        # Fallback to duration (could be minutes if from normalized data)
+        duration = raw_data.get("duration", 0)
+        if duration < 1000: # Heuristic: if small, likely minutes
+            return int(duration * 60)
+        return int(duration)
     
     def _build_summary(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Build summary metrics dict."""
@@ -252,6 +299,7 @@ class IntervalsAdapter(RawDataAdapter):
                     avg_power=self._parse_float(lap.get("avgPower")),
                     avg_hr=self._parse_float(lap.get("avgHr")),
                     max_hr=self._parse_float(lap.get("maxHr")),
+                    avg_pace=self._parse_pace(lap.get("pace")),
                     target_power=lap.get("target"),
                     notes=lap.get("label") or lap.get("name"),
                 )
@@ -269,21 +317,13 @@ class IntervalsAdapter(RawDataAdapter):
                 avg_power=interval.get("average_watts"),
                 avg_hr=interval.get("average_heartrate"),
                 max_hr=interval.get("max_heartrate"),
+                avg_pace=self._parse_pace(interval.get("pace")),
                 target_power=interval.get("target"),
                 notes=interval.get("label"),
             )
             intervals.append(interval_data)
         
         return intervals
-
-    def _parse_float(self, val: Any) -> Optional[float]:
-        """Parse string or number to float."""
-        if val is None or val == '-':
-            return None
-        try:
-            return float(val)
-        except (ValueError, TypeError):
-            return None
 
 
 class StravaAdapter(RawDataAdapter):
@@ -302,7 +342,13 @@ class StravaAdapter(RawDataAdapter):
         """Normalize Strava activity data."""
         
         activity_type = self._detect_activity_type(raw_data)
-        duration = raw_data.get("moving_time", 0)
+        
+        # Duration: Strava uses moving_time (seconds), fallback to duration (minutes)
+        duration = raw_data.get("moving_time")
+        if duration is None:
+            duration = int(raw_data.get("duration", 0) * 60)
+        else:
+            duration = int(duration)
         
         summary = self._build_summary(raw_data)
         intervals = self._extract_intervals(raw_data)
@@ -313,8 +359,8 @@ class StravaAdapter(RawDataAdapter):
             summary=summary,
             intervals=intervals,
             source=self.source_name,
-            source_id=str(raw_data.get("id")),
-            timestamp=raw_data.get("start_date_local"),
+            source_id=str(raw_data.get("id") or raw_data.get("sourceId", "")),
+            timestamp=raw_data.get("start_date_local") or raw_data.get("date"),
             raw_data=raw_data,
         )
         
@@ -331,18 +377,53 @@ class StravaAdapter(RawDataAdapter):
         """Build summary from Strava data."""
         summary = {}
         
-        if "average_heartrate" in raw_data:
-            summary["avg_hr"] = raw_data["average_heartrate"]
-        if "max_heartrate" in raw_data:
-            summary["max_hr"] = raw_data["max_heartrate"]
-        if "average_watts" in raw_data:
-            summary["avg_power"] = raw_data["average_watts"]
-        if "weighted_average_watts" in raw_data:
-            summary["normalized_power"] = raw_data["weighted_average_watts"]
-        if "distance" in raw_data:
-            summary["distance_km"] = raw_data["distance"] / 1000
-        if "total_elevation_gain" in raw_data:
-            summary["elevation_m"] = raw_data["total_elevation_gain"]
+        # Heart rate
+        avg_hr = raw_data.get("average_heartrate") or raw_data.get("heartRate")
+        if avg_hr:
+            summary["avg_hr"] = avg_hr
+            
+        max_hr = raw_data.get("max_heartrate")
+        if max_hr:
+            summary["max_hr"] = max_hr
+            
+        # Power
+        avg_power = raw_data.get("average_watts")
+        if avg_power:
+            summary["avg_power"] = avg_power
+            
+        weighted_avg_power = raw_data.get("weighted_average_watts")
+        if weighted_avg_power:
+            summary["normalized_power"] = weighted_avg_power
+            
+        # Distance
+        distance = raw_data.get("distance")
+        if distance:
+            summary["distance_km"] = distance / 1000
+        
+        # Elevation
+        elevation = raw_data.get("total_elevation_gain")
+        if elevation:
+            summary["elevation_m"] = elevation
+            
+        # TSS/Suffer Score
+        suffer_score = raw_data.get("suffer_score")
+        if suffer_score:
+            summary["tss"] = suffer_score
+        
+        # Handle proData if present
+        pro_data = raw_data.get("proData", {})
+        if isinstance(pro_data, dict) and pro_data.get("data"):
+            p_data = pro_data["data"]
+            if "avg_hr" in p_data and "avg_hr" not in summary:
+                summary["avg_hr"] = p_data["avg_hr"]
+            if "max_hr" in p_data and "max_hr" not in summary:
+                summary["max_hr"] = p_data["max_hr"]
+            if "distance_km" in p_data and "distance_km" not in summary:
+                summary["distance_km"] = p_data["distance_km"]
+            if "elevation_m" in p_data and "elevation_m" not in summary:
+                summary["elevation_m"] = p_data["elevation_m"]
+            if "calories" in p_data:
+                summary["calories"] = p_data["calories"]
         
         return summary
     
@@ -363,6 +444,7 @@ class StravaAdapter(RawDataAdapter):
                     avg_power=self._parse_float(lap.get("avgPower")),
                     avg_hr=self._parse_float(lap.get("avgHr")),
                     max_hr=self._parse_float(lap.get("maxHr")),
+                    avg_pace=self._parse_pace(lap.get("pace")),
                 )
                 intervals.append(interval_data)
             return intervals
@@ -378,37 +460,11 @@ class StravaAdapter(RawDataAdapter):
                 avg_power=lap.get("average_watts"),
                 avg_hr=lap.get("average_heartrate"),
                 max_hr=lap.get("max_heartrate"),
+                avg_pace=self._parse_pace(lap.get("pace")),
             )
             intervals.append(interval_data)
         
         return intervals
-
-    def _parse_time_to_seconds(self, time_str: Any) -> int:
-        """Parse time string like '13:16' or '419' to seconds."""
-        if not time_str:
-            return 0
-        if isinstance(time_str, (int, float)):
-            return int(time_str)
-        
-        parts = str(time_str).split(':')
-        if len(parts) == 2:
-            return int(parts[0]) * 60 + int(parts[1])
-        if len(parts) == 3:
-            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-        
-        try:
-            return int(float(time_str))
-        except ValueError:
-            return 0
-
-    def _parse_float(self, val: Any) -> Optional[float]:
-        """Parse string or number to float."""
-        if val is None or val == '-':
-            return None
-        try:
-            return float(val)
-        except (ValueError, TypeError):
-            return None
 
 
 class ManualAdapter(RawDataAdapter):

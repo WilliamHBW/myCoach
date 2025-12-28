@@ -285,12 +285,7 @@ async def analyze_record(
         analysis_result = await agent.analyze_record(
             plan_id=str(record.plan_id) if record.plan_id else None,
             record_id=str(record_id),
-            record_data={
-                "type": record.data.get("type"),
-                "duration": record.data.get("duration"),
-                "heartRate": record.data.get("heartRate"),
-                "notes": record.data.get("notes"),
-            }
+            record_data=record.data
         )
         
         # Save analysis to database
