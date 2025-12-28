@@ -40,6 +40,18 @@ def generate_user_prompt(user_profile: dict[str, Any]) -> str:
     target_date = user_profile.get('targetDate', '未填写')
     training_weeks = user_profile.get('trainingWeeks', 4)
     
+    # Handle level - distinguish between AI-generated report and user input
+    level_from_report = user_profile.get('levelFromReport', False)
+    level_content = user_profile.get('level', '未填写')
+    
+    if level_from_report:
+        level_section = f"""**运动能力评估（基于历史数据分析）：**
+{level_content}
+
+*注：以上评估基于用户导入的历史运动数据自动生成，请据此制定符合其实际能力的训练计划。*"""
+    else:
+        level_section = f"- 当前水平（用户自述）: {level_content}"
+    
     return f"""
 ### 用户问卷数据
 
@@ -53,7 +65,8 @@ def generate_user_prompt(user_profile: dict[str, Any]) -> str:
 - 主要训练项目: {user_profile.get('item', '未填写')}
 - 主要目标: {user_profile.get('goal', '未填写')}
 - 目标完成日期: {target_date}
-- 当前水平: {user_profile.get('level', '未填写')}
+
+{level_section}
 
 **训练时间规划：**
 - 计划开始日期: {start_date}
@@ -201,12 +214,17 @@ def generate_plan_update_prompt(
     
     weeks = current_plan.get("weeks", [])
     
+    # Handle level display
+    level_from_report = user_profile.get('levelFromReport', False)
+    level_content = user_profile.get('level', '未指定')
+    level_display = f"（AI评估）{level_content}" if level_from_report else level_content
+    
     return f"""
 ### 用户需求问卷（必须遵守的约束条件）
 - **性别**：{user_profile.get('gender', '未指定')}
 - **年龄**：{user_profile.get('age', '未指定')}岁
 - **训练目标**：{user_profile.get('goal', '未指定')}
-- **运动水平**：{user_profile.get('level', '未指定')}
+- **运动水平**：{level_display}
 - **训练日**：{training_days or '未指定'}（只能在这些日期安排训练！）
 - **可用器材**：{equipment or '未指定'}（动作必须符合器材条件！）
 - **伤病史/身体限制**：{user_profile.get('injuries', '无')}（必须避免相关动作！）

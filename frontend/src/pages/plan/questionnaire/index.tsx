@@ -235,7 +235,9 @@ export default function Questionnaire() {
       ...answers, 
       startDate,
       targetDate,
-      trainingWeeks 
+      trainingWeeks,
+      // Mark if level was auto-generated from fitness report
+      levelFromReport: hasData && fitnessReport?.report ? true : false
     }
 
     setGenerating(true)
