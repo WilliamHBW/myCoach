@@ -1,9 +1,13 @@
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TRAINING_QUESTIONS } from '../../../constants/questions'
 import { usePlanStore } from '../../../store/usePlanStore'
+import { recordApi, FitnessReportResponse } from '../../../services/api'
 import { showToast, showLoading, hideLoading, showConfirm } from '../../../utils/ui'
 import './index.scss'
+
+// Index of the 'level' question (0-based)
+const LEVEL_QUESTION_INDEX = TRAINING_QUESTIONS.findIndex(q => q.id === 'level')
 
 // 获取最近的下一个周一的日期
 function getNextMonday(): string {
@@ -35,13 +39,43 @@ function getWeeksBetween(startDate: string, endDate: string): number {
 
 export default function Questionnaire() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const hasData = searchParams.get('hasData') === 'true'
+  
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [targetDate, setTargetDate] = useState(getDefaultTargetDate())
   const { setGenerating, generatePlan, setCurrentPlan } = usePlanStore()
   
+  // Fitness report state
+  const [fitnessReport, setFitnessReport] = useState<FitnessReportResponse | null>(null)
+  const [isLoadingReport, setIsLoadingReport] = useState(false)
+  const [reportError, setReportError] = useState<string | null>(null)
+  
   // 开始日期固定为最近的下周一
   const startDate = useMemo(() => getNextMonday(), [])
+  
+  // Async fetch fitness report if user has data
+  useEffect(() => {
+    if (hasData && !fitnessReport && !isLoadingReport) {
+      setIsLoadingReport(true)
+      recordApi.generateFitnessReport()
+        .then((report) => {
+          setFitnessReport(report)
+          if (report.report) {
+            // Auto-fill the level answer with AI report
+            setAnswers(prev => ({ ...prev, level: report.report }))
+          }
+        })
+        .catch((e) => {
+          console.error('Failed to generate fitness report:', e)
+          setReportError(e.message || '生成报告失败')
+        })
+        .finally(() => {
+          setIsLoadingReport(false)
+        })
+    }
+  }, [hasData])
 
   // 总步骤数 = 问题数 + 1（确认步骤）
   const totalSteps = TRAINING_QUESTIONS.length + 1
@@ -66,7 +100,12 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: option }))
     setTimeout(() => {
       if (!isLastStep) {
-        setCurrentStep(prev => prev + 1)
+        let nextStep = currentStep + 1
+        // If next step is the level question and we have a report, skip it
+        if (nextStep === LEVEL_QUESTION_INDEX && shouldSkipLevel) {
+          nextStep = LEVEL_QUESTION_INDEX + 1
+        }
+        setCurrentStep(nextStep)
       }
     }, 200)
   }
@@ -131,6 +170,9 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: value }))
   }
 
+  // Check if we should skip the level question
+  const shouldSkipLevel = hasData && fitnessReport?.report && !reportError
+  
   const handleNext = () => {
     // 确认步骤直接提交
     if (isConfirmStep) {
@@ -149,12 +191,27 @@ export default function Questionnaire() {
       return
     }
 
-    setCurrentStep(prev => prev + 1)
+    // Calculate next step, potentially skipping level question
+    let nextStep = currentStep + 1
+    
+    // If next step is the level question and we have a report, skip it
+    if (nextStep === LEVEL_QUESTION_INDEX && shouldSkipLevel) {
+      nextStep = LEVEL_QUESTION_INDEX + 1
+    }
+    
+    setCurrentStep(nextStep)
   }
 
   const handlePrev = () => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1)
+      let prevStep = currentStep - 1
+      
+      // If prev step is the level question and we have a report, skip it
+      if (prevStep === LEVEL_QUESTION_INDEX && shouldSkipLevel) {
+        prevStep = LEVEL_QUESTION_INDEX - 1
+      }
+      
+      setCurrentStep(Math.max(0, prevStep))
     }
   }
 
@@ -196,12 +253,34 @@ export default function Questionnaire() {
     }
   }
 
+  // Calculate effective total steps (excluding skipped level question)
+  const effectiveTotalSteps = shouldSkipLevel ? totalSteps - 1 : totalSteps
+  const effectiveCurrentStep = shouldSkipLevel && currentStep > LEVEL_QUESTION_INDEX 
+    ? currentStep - 1 
+    : currentStep
+
   return (
     <div className='questionnaire-page'>
+      {/* Fitness report loading indicator */}
+      {hasData && isLoadingReport && (
+        <div className='report-loading-banner'>
+          <span className='loading-spinner-small'></span>
+          <span>AI 正在分析您的运动数据...</span>
+        </div>
+      )}
+      
+      {/* Fitness report ready indicator */}
+      {hasData && fitnessReport?.report && !isLoadingReport && (
+        <div className='report-ready-banner'>
+          <span className='check-icon'>✓</span>
+          <span>已根据您的运动数据生成能力评估</span>
+        </div>
+      )}
+      
       <div className='progress-bar'>
         <div 
           className='progress-fill' 
-          style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }} 
+          style={{ width: `${((effectiveCurrentStep + 1) / effectiveTotalSteps) * 100}%` }} 
         />
       </div>
       

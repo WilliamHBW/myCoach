@@ -5,6 +5,7 @@ import { planApi } from '../../services/api'
 import { showToast, showConfirm, showLoading, hideLoading } from '../../utils/ui'
 import { ChatDialog } from '../../components/ChatDialog'
 import { generateICS } from '../../utils/calendar'
+import { hasWorkoutData } from '../../utils/dataCheck'
 import './index.scss'
 
 // 星期几对应的索引（周一为起点）
@@ -138,8 +139,36 @@ export default function Plan() {
     })
   }
 
-  const handleCreate = () => {
-    navigate('/plan/questionnaire')
+  const handleCreate = async () => {
+    showLoading('正在检查您的运动数据...')
+    
+    try {
+      const hasData = await hasWorkoutData()
+      hideLoading()
+      
+      if (hasData) {
+        // User has workout data, go to questionnaire with flag
+        navigate('/plan/questionnaire?hasData=true')
+      } else {
+        // No data, ask if user wants to import
+        showConfirm({
+          title: '未找到运动数据',
+          content: '我们未找到您的历史运动数据。导入数据后，AI可以更准确地评估您的运动能力并制定个性化计划。\n\n是否前往设置页面连接您的运动数据源？',
+          confirmText: '去导入',
+          cancelText: '直接创建',
+          onConfirm: () => {
+            navigate('/settings')
+          },
+          onCancel: () => {
+            navigate('/plan/questionnaire?hasData=false')
+          }
+        })
+      }
+    } catch (e) {
+      hideLoading()
+      // On error, just proceed to questionnaire
+      navigate('/plan/questionnaire?hasData=false')
+    }
   }
 
   const handleExport = () => {

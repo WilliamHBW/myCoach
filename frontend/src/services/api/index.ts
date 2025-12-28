@@ -113,6 +113,23 @@ export interface WorkoutRecord {
   analysis?: string | null
 }
 
+export interface FitnessReportResponse {
+  hasData: boolean
+  recordCount: number
+  report: string | null
+  summary: {
+    period_days: number
+    total_records: number
+    recent_records: number
+    weekly_frequency: number
+    activity_type_distribution: Record<string, number>
+    total_duration_minutes: number
+    avg_duration_minutes: number
+    avg_heart_rate: number | null
+    avg_trimp: number | null
+  } | null
+}
+
 export interface ChatModifyResponse {
   message: string
   updatedPlan?: TrainingWeek[]
@@ -258,6 +275,13 @@ export const recordApi = {
    */
   analyze: async (id: string): Promise<WorkoutRecord> => {
     return post<WorkoutRecord>(`/records/${id}/analyze`)
+  },
+
+  /**
+   * Generate fitness assessment report based on workout history
+   */
+  generateFitnessReport: async (): Promise<FitnessReportResponse> => {
+    return get<FitnessReportResponse>('/records/fitness-report')
   },
 }
 
