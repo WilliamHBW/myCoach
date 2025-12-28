@@ -147,8 +147,16 @@ export default function Plan() {
       hideLoading()
       
       if (hasData) {
-        // User has workout data, go to questionnaire with flag
-        navigate('/plan/questionnaire?hasData=true')
+        // User has workout data, show info and go to questionnaire
+        showConfirm({
+          title: '发现运动数据',
+          content: '检测到您已导入运动记录，AI 将根据您的历史数据自动评估运动能力，您无需手动填写运动水平。\n\n点击"开始"进入问卷。',
+          confirmText: '开始',
+          cancelText: '',
+          onConfirm: () => {
+            navigate('/plan/questionnaire?hasData=true')
+          }
+        })
       } else {
         // No data, ask if user wants to import
         showConfirm({

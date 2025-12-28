@@ -58,18 +58,32 @@ export default function Questionnaire() {
   // Async fetch fitness report if user has data
   useEffect(() => {
     if (hasData && !fitnessReport && !isLoadingReport) {
+      // Set a placeholder answer while loading
+      setAnswers(prev => ({ ...prev, level: '（AI 正在根据您的运动数据生成能力评估...）' }))
       setIsLoadingReport(true)
+      
       recordApi.generateFitnessReport()
         .then((report) => {
           setFitnessReport(report)
           if (report.report) {
-            // Auto-fill the level answer with AI report
+            // Update with AI report
             setAnswers(prev => ({ ...prev, level: report.report }))
+          } else {
+            // No report content, use summary-based default
+            setAnswers(prev => ({ 
+              ...prev, 
+              level: `根据您的 ${report.recordCount} 条运动记录，系统将自动评估您的运动能力。` 
+            }))
           }
         })
         .catch((e) => {
           console.error('Failed to generate fitness report:', e)
           setReportError(e.message || '生成报告失败')
+          // Use fallback answer on error
+          setAnswers(prev => ({ 
+            ...prev, 
+            level: '根据您的历史运动数据，系统将自动评估运动能力并制定计划。' 
+          }))
         })
         .finally(() => {
           setIsLoadingReport(false)
@@ -170,8 +184,8 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: value }))
   }
 
-  // Check if we should skip the level question
-  const shouldSkipLevel = hasData && fitnessReport?.report && !reportError
+  // Check if we should skip the level question (skip when user has data, regardless of report status)
+  const shouldSkipLevel = hasData
   
   const handleNext = () => {
     // 确认步骤直接提交
