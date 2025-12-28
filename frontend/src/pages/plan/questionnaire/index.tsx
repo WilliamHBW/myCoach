@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TRAINING_QUESTIONS } from '../../../constants/questions'
 import { usePlanStore } from '../../../store/usePlanStore'
@@ -52,6 +52,15 @@ export default function Questionnaire() {
   const [isLoadingReport, setIsLoadingReport] = useState(false)
   const [reportError, setReportError] = useState<string | null>(null)
   
+  // Refs to track state for async operations
+  const isLoadingReportRef = useRef(false)
+  const answersRef = useRef(answers)
+  
+  // Keep answersRef in sync with answers state
+  useEffect(() => {
+    answersRef.current = answers
+  }, [answers])
+  
   // 开始日期固定为最近的下周一
   const startDate = useMemo(() => getNextMonday(), [])
   
@@ -61,6 +70,7 @@ export default function Questionnaire() {
       // Set a placeholder answer while loading
       setAnswers(prev => ({ ...prev, level: '（AI 正在根据您的运动数据生成能力评估...）' }))
       setIsLoadingReport(true)
+      isLoadingReportRef.current = true
       
       recordApi.generateFitnessReport()
         .then((report) => {
@@ -87,6 +97,7 @@ export default function Questionnaire() {
         })
         .finally(() => {
           setIsLoadingReport(false)
+          isLoadingReportRef.current = false
         })
     }
   }, [hasData])
@@ -184,8 +195,9 @@ export default function Questionnaire() {
     setAnswers(prev => ({ ...prev, [currentQuestion!.id]: value }))
   }
 
-  // Check if we should skip the level question (only skip when report is ready)
-  const shouldSkipLevel = hasData && !!fitnessReport?.report && !reportError
+  // Check if we should skip the level question (skip when user has data, regardless of report status)
+  // Because we always set a fallback answer for the level question when hasData is true
+  const shouldSkipLevel = hasData && !isLoadingReport
   
   // Auto-jump to next step if report becomes ready while on the level question
   useEffect(() => {
@@ -240,14 +252,39 @@ export default function Questionnaire() {
   }
 
   const handleSubmit = async () => {
+    // If fitness report is still loading, wait for it to complete
+    if (hasData && isLoadingReportRef.current) {
+      showLoading('正在等待运动能力评估完成...')
+      
+      // Wait for report to finish loading (poll every 300ms, max 60s)
+      const maxWait = 60000
+      const pollInterval = 300
+      let waited = 0
+      
+      while (isLoadingReportRef.current && waited < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval))
+        waited += pollInterval
+      }
+      
+      hideLoading()
+      
+      // If still loading after max wait, continue anyway with fallback
+      if (isLoadingReportRef.current) {
+        console.warn('Fitness report generation timed out, proceeding with fallback')
+        showToast('评估报告生成超时，将使用默认评估', 'warning')
+      }
+    }
+    
     // 将目标日期和训练周数加入用户档案
+    // 使用 answersRef.current 获取最新的 answers（可能在等待期间已更新）
     const userProfile = { 
-      ...answers, 
+      ...answersRef.current, 
       startDate,
       targetDate,
       trainingWeeks,
-      // Mark if level was auto-generated from fitness report
-      levelFromReport: hasData && fitnessReport?.report ? true : false
+      // Mark if level was auto-generated based on user's workout data
+      // True if user has data (even if AI report generation failed, we use fallback)
+      levelFromReport: hasData
     }
 
     setGenerating(true)
@@ -462,7 +499,7 @@ export default function Questionnaire() {
                       <div className='report-generation-loading'>
                         <div className='spinner'></div>
                         <p>AI 正在分析您的运动历史数据...</p>
-                        <p className='hint'>生成完成后将为您自动填写此项</p>
+                        <p className='hint'>生成完成后将自动填写此项并进入下一步</p>
                       </div>
                     ) : fitnessReport?.report ? (
                       <div className='report-generation-success'>
@@ -474,15 +511,13 @@ export default function Questionnaire() {
                         <p className='hint'>即将自动进入下一题...</p>
                       </div>
                     ) : (
-                      <div className='report-generation-manual'>
-                        <p className='hint'>无法自动生成报告，请手动评估您的运动水平：</p>
-                        <textarea
-                          className='text-input'
-                          placeholder={currentQuestion.placeholder}
-                          value={answers[currentQuestion.id] || ''}
-                          onChange={(e) => handleTextInput(e.target.value)}
-                          maxLength={200}
-                        />
+                      <div className='report-generation-auto'>
+                        <div className='auto-icon'>🤖</div>
+                        <p>系统将根据您的运动数据自动评估运动能力</p>
+                        <p className='hint'>评估结果将用于制定个性化训练计划</p>
+                        <div className='auto-answer-preview'>
+                          {answers[currentQuestion.id] || '自动评估中...'}
+                        </div>
                       </div>
                     )}
                   </div>

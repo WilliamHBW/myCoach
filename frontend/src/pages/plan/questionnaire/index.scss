@@ -555,6 +555,38 @@
     }
   }
 
+  .report-generation-auto {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+
+    .auto-icon {
+      font-size: 40px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--color-text-secondary);
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .auto-answer-preview {
+      width: 100%;
+      background: white;
+      padding: var(--spacing-md);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-gray-300);
+      text-align: left;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+      max-height: 150px;
+      overflow-y: auto;
+    }
+  }
+
   .hint {
     font-size: 13px;
     color: var(--color-text-muted);
