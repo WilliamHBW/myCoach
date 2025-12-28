@@ -2,12 +2,16 @@
 Structured logging configuration.
 Designed for easy debugging without exposing sensitive data.
 """
+import json
 import logging
+import os
 import sys
 import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import Any, List, Optional, Generator
 
 import structlog
@@ -252,6 +256,8 @@ class AICallTracker:
         self.logger = logger
         self.enabled = enabled
         self.max_length = max_length
+        self.file_log_enabled = settings.AI_FILE_LOG
+        self.file_log_dir = settings.AI_FILE_LOG_DIR
         self.log = AICallLog(
             provider=provider,
             model=model,
@@ -366,6 +372,76 @@ class AICallTracker:
                 duration_ms=round(self.log.duration_ms, 2),
                 error_type=self.log.error_type,
                 error_message=self.log.error_message,
+            )
+        
+        # Save to file if enabled
+        if self.file_log_enabled:
+            self._save_to_file()
+    
+    def _save_to_file(self) -> None:
+        """Save the complete prompt and response to a log file."""
+        try:
+            # Ensure log directory exists
+            log_dir = Path(self.file_log_dir)
+            log_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_{self.log.call_id}_{self.log.provider}.json"
+            filepath = log_dir / filename
+            
+            # Build log entry
+            log_entry = {
+                "metadata": {
+                    "call_id": self.log.call_id,
+                    "provider": self.log.provider,
+                    "model": self.log.model,
+                    "endpoint": self.log.endpoint,
+                    "timestamp": datetime.now().isoformat(),
+                    "duration_ms": round(self.log.duration_ms, 2),
+                    "success": self.log.success,
+                    "temperature": self.log.request_temperature,
+                    "max_tokens": self.log.request_max_tokens,
+                },
+                "tokens": {
+                    "prompt_tokens": self.log.prompt_tokens,
+                    "completion_tokens": self.log.completion_tokens,
+                    "total_tokens": self.log.total_tokens,
+                },
+                "request": {
+                    "messages": [
+                        {"role": m.role, "content": m.content}
+                        for m in self.log.request_messages
+                    ]
+                },
+                "response": {
+                    "content": self.log.response_content,
+                    "content_length": self.log.response_content_length,
+                },
+            }
+            
+            # Add error info if present
+            if not self.log.success:
+                log_entry["error"] = {
+                    "type": self.log.error_type,
+                    "message": self.log.error_message,
+                }
+            
+            # Write to file
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(log_entry, f, ensure_ascii=False, indent=2)
+            
+            self.logger.debug(
+                "AI call log saved to file",
+                call_id=self.log.call_id,
+                filepath=str(filepath),
+            )
+            
+        except Exception as e:
+            self.logger.warning(
+                "Failed to save AI call log to file",
+                call_id=self.log.call_id,
+                error=str(e),
             )
     
     def get_summary(self) -> dict:

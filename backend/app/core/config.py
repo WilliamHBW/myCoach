@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Maximum length of message content to log (0 = unlimited)
     AI_DEBUG_LOG_MAX_LENGTH: int = 2000
     
+    # AI File Logging - save complete prompts and responses to log/ folder
+    # Creates log files with full message content for debugging
+    AI_FILE_LOG: bool = True
+    AI_FILE_LOG_DIR: str = "log"
+    
     # Agent Decision Logging - enables detailed agent decision tracing
     # Logs the reasoning behind each decision in the agent's execution flow
     AGENT_DECISION_LOG: bool = False

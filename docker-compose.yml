@@ -32,8 +32,12 @@ services:
       AI_TEMPERATURE: ${AI_TEMPERATURE:-0.7}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
+      AI_FILE_LOG: ${AI_FILE_LOG:-true}
       CORS_ORIGINS: '["http://localhost:3000", "http://localhost:80", "http://frontend:80", "http://intervals-server:3001"]'
       INTERVALS_SERVER_URL: http://intervals-server:3001
+    volumes:
+      # Mount log directory for AI call logs
+      - ./log:/app/log
     ports:
       - "8000:8000"
     depends_on:
